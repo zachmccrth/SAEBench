@@ -1,10 +1,11 @@
-There are a few requirements for the SAE object.
+There are a few requirements for the SAE object. If your SAE object inherits `BaseSAE`, then most of these will be inherited from the `BaseSAE`.
 
 - It must have `encode()`, `decode()`, and `forward()` methods.
 - The evals of SCR, TPP, and feature absorption require a `W_dec`, which is an nn.Parameter initialized with the following shape: `self.W_dec = nn.Parameter(torch.zeros(d_sae, d_model))`.
+- `W_dec` should have unit norm decoder vectors. Some SAE trainers do not enforce this. `BaseSAE` has a function `check_decoder_norms()`, which we recommend calling when loading the SAE. For an example of how to fix this, refer to `normalize_decoder()` in `relu_sae.py`.
 - The SAE must have a `dtype` and `device` attribute.
 - The SAE must have a `.cfg` field, which contains attributes like `d_sae` and `d_in`. The core evals utilize SAE Lens internals, and require a handful of blank fields, which are already set in the `CustomSaeConfig` dataclass.
-- In general, just pattern match to the `jump_relu` and `vanilla` implementations for how to add the config and other fields.
+- In general, just pattern match to the `jump_relu` and `relu` implementations if adding your own.
 
 Refer to `SAEBench/sae_bench_demo.ipynb` for an example of how to compare a custom SAE with a baseline SAE and create some graphs. There is also a cell demonstrating how to run all evals on a selection of SAEs.
 

@@ -10,54 +10,39 @@ from tqdm import tqdm
 import gc
 
 import custom_saes.custom_sae_config as sae_config
+import custom_saes.base_sae as base_sae
 import sae_bench_utils.dataset_utils as dataset_utils
 import sae_bench_utils.activation_collection as activation_collection
 
 
-class PCASAE(nn.Module):
+class PCASAE(base_sae.BaseSAE):
     def __init__(
         self,
+        d_in: int,
         model_name: str,
-        d_model: int,
         hook_layer: int,
-        context_size: int,
+        device: torch.device,
+        dtype: torch.dtype,
         hook_name: Optional[str] = None,
     ):
-        """Fit a PCA model to the activations of a model and treat it as an SAE."""
-        super().__init__()
+        hook_name = hook_name or f"blocks.{hook_layer}.hook_resid_post"
+        super().__init__(d_in, d_in, model_name, hook_layer, device, dtype, hook_name)
 
-        self.W_enc = nn.Parameter(torch.zeros(d_model, d_model))
-        self.W_dec = nn.Parameter(torch.zeros(d_model, d_model))
-        self.mean = nn.Parameter(torch.zeros(d_model))
+        # Additional parameter specific to PCA
+        self.mean = nn.Parameter(torch.zeros(d_in))
 
-        self.device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.dtype: torch.dtype = torch.float32
-
-        if hook_name is None:
-            hook_name = f"blocks.{hook_layer}.hook_resid_post"
-
-        # Initialize the configuration dataclass
-        self.cfg = sae_config.CustomSAEConfig(
-            model_name,
-            d_in=d_model,
-            d_sae=d_model,
-            hook_name=hook_name,
-            hook_layer=hook_layer,
-            context_size=context_size,
-        )
-
-    def encode(self, input_acts: torch.Tensor):
-        centered_acts = input_acts - self.mean
+    def encode(self, x: torch.Tensor):
+        centered_acts = x - self.mean
         encoded_acts = centered_acts @ self.W_enc
         return encoded_acts
 
-    def decode(self, encoded_acts: torch.Tensor):
-        decoded_acts = encoded_acts @ self.W_dec
+    def decode(self, feature_acts: torch.Tensor):
+        decoded_acts = feature_acts @ self.W_dec
         return decoded_acts + self.mean
 
-    def forward(self, acts):
-        acts = self.encode(acts)
-        recon = self.decode(acts)
+    def forward(self, x: torch.Tensor):
+        x = self.encode(x)
+        recon = self.decode(x)
         return recon
 
     def save_state_dict(self, file_path: str):
@@ -72,20 +57,31 @@ class PCASAE(nn.Module):
         self.W_enc.data = state_dict["W_enc"]
         self.W_dec.data = state_dict["W_dec"]
         self.mean.data = state_dict["mean"]
+        self.normalize_decoder()
 
-    # required as we have device and dtype class attributes
-    def to(self, *args, **kwargs):
-        super().to(*args, **kwargs)
-        # Update the device and dtype attributes based on the first parameter
-        device = kwargs.get("device", None)
-        dtype = kwargs.get("dtype", None)
+    @torch.no_grad()
+    def normalize_decoder(self):
+        norms = torch.norm(self.W_dec, dim=1).to(dtype=self.dtype, device=self.device)
 
-        # Update device and dtype if they were provided
-        if device:
-            self.device = device
-        if dtype:
-            self.dtype = dtype
-        return self
+        print("Decoder vectors are not normalized. Normalizing.")
+
+        test_input = torch.randn(10, self.cfg.d_in)
+        initial_output = self(test_input)
+
+        self.W_dec.data /= norms[:, None]
+
+        new_norms = torch.norm(self.W_dec, dim=1)
+        assert torch.allclose(new_norms, torch.ones_like(new_norms))
+
+        self.W_enc *= norms
+
+        new_output = self(test_input)
+
+        max_diff = torch.abs(initial_output - new_output).max()
+        print(f"Max difference in output: {max_diff}")
+
+        # Errors can be relatively large in larger SAEs due to floating point precision
+        assert torch.allclose(initial_output, new_output, atol=1e-4)
 
 
 @torch.no_grad()

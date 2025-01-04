@@ -5,80 +5,84 @@ import numpy as np
 from typing import Optional
 
 import custom_saes.custom_sae_config as sae_config
+import custom_saes.base_sae as base_sae
 
 
-class JumpReLUSAE(nn.Module):
+class JumpReLUSAE(base_sae.BaseSAE):
     def __init__(
         self,
-        d_model: int,
+        d_in: int,
         d_sae: int,
+        model_name: str,
         hook_layer: int,
-        model_name: str = "gemma-2-2b",
+        device: torch.device,
+        dtype: torch.dtype,
         hook_name: Optional[str] = None,
     ):
-        super().__init__()
-        self.W_enc = nn.Parameter(torch.zeros(d_model, d_sae))
-        self.W_dec = nn.Parameter(torch.zeros(d_sae, d_model))
+        hook_name = hook_name or f"blocks.{hook_layer}.hook_resid_post"
+        super().__init__(d_in, d_sae, model_name, hook_layer, device, dtype, hook_name)
+
         self.threshold = nn.Parameter(torch.zeros(d_sae))
-        self.b_enc = nn.Parameter(torch.zeros(d_sae))
-        self.b_dec = nn.Parameter(torch.zeros(d_model))
-        self.device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.dtype: torch.dtype = torch.float32
 
-        if hook_name is None:
-            hook_name = f"blocks.{hook_layer}.hook_resid_post"
-
-        self.cfg = sae_config.CustomSAEConfig(
-            model_name, d_in=d_model, d_sae=d_sae, hook_name=hook_name, hook_layer=hook_layer
-        )
-
-    def encode(self, input_acts):
-        pre_acts = input_acts @ self.W_enc + self.b_enc
+    def encode(self, x: torch.Tensor):
+        pre_acts = x @ self.W_enc + self.b_enc
         mask = pre_acts > self.threshold
         acts = mask * torch.nn.functional.relu(pre_acts)
         return acts
 
-    def decode(self, acts):
-        return acts @ self.W_dec + self.b_dec
+    def decode(self, feature_acts: torch.Tensor):
+        return feature_acts @ self.W_dec + self.b_dec
 
-    def forward(self, acts):
-        acts = self.encode(acts)
-        recon = self.decode(acts)
+    def forward(self, x: torch.Tensor):
+        x = self.encode(x)
+        recon = self.decode(x)
         return recon
 
-    # required as we have device and dtype class attributes
-    def to(self, *args, **kwargs):
-        super().to(*args, **kwargs)
-        # Update the device and dtype attributes based on the first parameter
-        device = kwargs.get("device", None)
-        dtype = kwargs.get("dtype", None)
 
-        # Update device and dtype if they were provided
-        if device:
-            self.device = device
-        if dtype:
-            self.dtype = dtype
-        return self
-
-
-def load_jumprelu_sae(repo_id: str, filename: str, layer: int) -> JumpReLUSAE:
+def load_gemma_scope_jumprelu_sae(
+    repo_id: str,
+    filename: str,
+    layer: int,
+    model_name: str,
+    device: torch.device,
+    dtype: torch.dtype,
+    local_dir: str = "downloaded_saes",
+) -> JumpReLUSAE:
     path_to_params = hf_hub_download(
         repo_id=repo_id,
         filename=filename,
         force_download=False,
+        local_dir=local_dir,
     )
 
     params = np.load(path_to_params)
-    pt_params = {k: torch.from_numpy(v).cuda() for k, v in params.items()}
+    pt_params = {k: torch.from_numpy(v).cpu() for k, v in params.items()}
 
-    sae = JumpReLUSAE(params["W_enc"].shape[0], params["W_enc"].shape[1], layer)
+    d_in = params["W_enc"].shape[0]
+    d_sae = params["W_enc"].shape[1]
+
+    assert d_sae >= d_in
+
+    sae = JumpReLUSAE(d_in, d_sae, model_name, layer, device, dtype)
     sae.load_state_dict(pt_params)
+
+    sae.cfg.architecture = "jumprelu"
+
+    normalized = sae.check_decoder_norms()
+    if not normalized:
+        raise ValueError("Decoder norms are not normalized. Implement a normalization method.")
 
     return sae
 
 
 if __name__ == "__main__":
-    repo_id = "google/gemma-scope-2b-pt-res"
-    filename = "layer_20/width_16k/average_l0_71/params.npz"
+    layer = 20
 
-    sae = load_jumprelu_sae(repo_id, filename, 20)
+    repo_id = "google/gemma-scope-2b-pt-res"
+    filename = f"layer_{layer}/width_16k/average_l0_71/params.npz"
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    dtype = torch.float32
+    model_name = "google/gemma-2-2b"
+
+    sae = load_gemma_scope_jumprelu_sae(repo_id, filename, layer, model_name, device, dtype)
