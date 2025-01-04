@@ -1,10 +1,14 @@
 import torch
 import torch.nn as nn
 from typing import Optional
+import einops
+from transformer_lens import HookedTransformer
+from abc import ABC, abstractmethod
+
 import custom_saes.custom_sae_config as sae_config
 
 
-class BaseSAE(nn.Module):
+class BaseSAE(nn.Module, ABC):
     def __init__(
         self,
         d_in: int,
@@ -23,7 +27,7 @@ class BaseSAE(nn.Module):
 
         # b_enc and b_dec don't have to be used in the encode/decode methods
         # if your SAE doesn't use biases, leave them as zeros
-        # NOTE: core() checks for cosine similarity with b_enc, so it's nice to have the field available
+        # NOTE: core/main.py checks for cosine similarity with b_enc, so it's nice to have the field available
         self.b_enc = nn.Parameter(torch.zeros(d_sae))
         self.b_dec = nn.Parameter(torch.zeros(d_in))
 
@@ -38,17 +42,32 @@ class BaseSAE(nn.Module):
         self.cfg.dtype = self.dtype.__str__().split(".")[1]
         self.to(dtype=self.dtype, device=self.device)
 
+    @abstractmethod
     def encode(self, x: torch.Tensor):
         """Must be implemented by child classes"""
         raise NotImplementedError("Encode method must be implemented by child classes")
 
+    @abstractmethod
     def decode(self, feature_acts: torch.Tensor):
         """Must be implemented by child classes"""
         raise NotImplementedError("Encode method must be implemented by child classes")
 
+    @abstractmethod
     def forward(self, x: torch.Tensor):
         """Must be implemented by child classes"""
         raise NotImplementedError("Encode method must be implemented by child classes")
+
+    def to(self, *args, **kwargs):
+        """Handle device and dtype updates"""
+        super().to(*args, **kwargs)
+        device = kwargs.get("device", None)
+        dtype = kwargs.get("dtype", None)
+
+        if device:
+            self.device = device
+        if dtype:
+            self.dtype = dtype
+        return self
 
     @torch.no_grad()
     def check_decoder_norms(self) -> bool:
@@ -62,14 +81,27 @@ class BaseSAE(nn.Module):
         else:
             return False
 
-    def to(self, *args, **kwargs):
-        """Handle device and dtype updates"""
-        super().to(*args, **kwargs)
-        device = kwargs.get("device", None)
-        dtype = kwargs.get("dtype", None)
+    @torch.no_grad()
+    def test_sae(self, model_name: str):
+        assert self.W_dec.shape == (self.cfg.d_sae, self.cfg.d_in)
+        assert self.W_enc.shape == (self.cfg.d_in, self.cfg.d_sae)
 
-        if device:
-            self.device = device
-        if dtype:
-            self.dtype = dtype
-        return self
+        model = HookedTransformer.from_pretrained(model_name, device=self.device)
+
+        test_input = "The scientist named the population, after their distinctive horn, Ovid’s Unicorn. These four-horned, silver-white unicorns were previously unknown to science"
+
+        _, cache = model.run_with_cache(test_input, prepend_bos=True)
+        acts = cache[self.cfg.hook_name]
+
+        encoded_acts = self.encode(acts)
+        decoded_acts = self.decode(encoded_acts)
+
+        flattened_acts = einops.rearrange(acts, "b l d -> (b l) d")
+        reconstructed_acts = self(flattened_acts)
+        # match flattened_acts with decoded_acts
+        reconstructed_acts = reconstructed_acts.reshape(acts.shape)
+
+        assert torch.allclose(reconstructed_acts, decoded_acts)
+
+        l0 = (encoded_acts[:, 1:] > 0).float().sum(-1).detach()
+        print(f"average l0: {l0.mean().item()}")

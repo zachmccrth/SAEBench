@@ -165,19 +165,6 @@ if __name__ == "__main__":
     dtype = torch.float32
 
     model_name = "EleutherAI/pythia-70m-deduped"
-    hook_name = f"blocks.{layer}.hook_resid_post"
 
     sae = load_dictionary_learning_relu_sae(repo_id, filename, layer, model_name, device, dtype)
-
-    model = HookedTransformer.from_pretrained(model_name, device=device)
-
-    test_input = "The scientist named the population, after their distinctive horn, Ovid’s Unicorn. These four-horned, silver-white unicorns were previously unknown to science"
-
-    _, cache = model.run_with_cache(test_input, prepend_bos=True)
-    acts = cache[hook_name]
-
-    encoded_acts = sae.encode(acts)
-    decoded_acts = sae.decode(encoded_acts)
-
-    l0 = (encoded_acts[:, 1:] > 0).float().sum(-1).detach()
-    print(f"average l0: {l0.mean().item()}")
+    sae.test_sae(model_name)
