@@ -22,7 +22,7 @@ class JumpReLUSAE(base_sae.BaseSAE):
         hook_name = hook_name or f"blocks.{hook_layer}.hook_resid_post"
         super().__init__(d_in, d_sae, model_name, hook_layer, device, dtype, hook_name)
 
-        self.threshold = nn.Parameter(torch.zeros(d_sae))
+        self.threshold = nn.Parameter(torch.zeros(d_sae)).to(dtype=dtype, device=device)
 
     def encode(self, x: torch.Tensor):
         pre_acts = x @ self.W_enc + self.b_enc
@@ -65,6 +65,7 @@ def load_gemma_scope_jumprelu_sae(
 
     sae = JumpReLUSAE(d_in, d_sae, model_name, layer, device, dtype)
     sae.load_state_dict(pt_params)
+    sae.to(dtype=dtype, device=device)
 
     sae.cfg.architecture = "jumprelu"
 

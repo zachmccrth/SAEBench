@@ -58,6 +58,7 @@ class PCASAE(base_sae.BaseSAE):
         self.W_dec.data = state_dict["W_dec"]
         self.mean.data = state_dict["mean"]
         self.normalize_decoder()
+        self.to(dtype=self.dtype, device=self.device)
 
     @torch.no_grad()
     def normalize_decoder(self):

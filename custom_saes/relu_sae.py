@@ -46,7 +46,7 @@ class ReluSAE(base_sae.BaseSAE):
 
         print("Decoder vectors are not normalized. Normalizing.")
 
-        test_input = torch.randn(10, self.cfg.d_in)
+        test_input = torch.randn(10, self.cfg.d_in).to(dtype=self.dtype, device=self.device)
         initial_output = self(test_input)
 
         self.W_dec.data /= norms[:, None]
@@ -98,7 +98,9 @@ def load_dictionary_learning_relu_sae(
         config = json.load(f)
 
     assert layer == config["trainer"]["layer"]
-    assert model_name == config["trainer"]["lm_name"]
+
+    # Transformer lens often uses a shortened model name
+    assert model_name in config["trainer"]["lm_name"]
 
     # Print original keys for debugging
     print("Original keys in state_dict:", pt_params.keys())
@@ -131,6 +133,8 @@ def load_dictionary_learning_relu_sae(
     )
 
     sae.load_state_dict(renamed_params)
+
+    sae.to(device=device, dtype=dtype)
 
     d_sae, d_in = sae.W_dec.data.shape
 

@@ -25,6 +25,10 @@ def str_to_dtype(dtype_str: str) -> torch.dtype:
     return dtype
 
 
+def dtype_to_str(dtype: torch.dtype) -> str:
+    return dtype.__str__().split(".")[1]
+
+
 def setup_environment():
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 

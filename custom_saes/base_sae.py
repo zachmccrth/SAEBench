@@ -36,6 +36,7 @@ class BaseSAE(nn.Module):
             model_name, d_in=d_in, d_sae=d_sae, hook_name=hook_name, hook_layer=hook_layer
         )
         self.cfg.dtype = self.dtype.__str__().split(".")[1]
+        self.to(dtype=self.dtype, device=self.device)
 
     def encode(self, x: torch.Tensor):
         """Must be implemented by child classes"""
