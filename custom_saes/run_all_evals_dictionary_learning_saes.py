@@ -3,6 +3,7 @@ from typing import Any, Optional
 from tqdm import tqdm
 import torch
 from huggingface_hub import snapshot_download
+import json
 
 import evals.absorption.main as absorption
 import evals.autointerp.main as autointerp
@@ -35,7 +36,6 @@ output_folders = {
     "unlearning": "eval_results/unlearning",
 }
 
-# NOTE: key order is important, refer to `load_dictionary_learning_sae()` for why
 TRAINER_LOADERS = {
     "BatchTopKTrainer": batch_topk_sae.load_dictionary_learning_batch_topk_sae,
     "TopKTrainer": topk_sae.load_dictionary_learning_topk_sae,
@@ -47,35 +47,24 @@ TRAINER_LOADERS = {
 }
 
 
-def validate_trainer_order(trainer_loaders: dict[str, Any]) -> None:
-    keys = list(trainer_loaders.keys())
-    for i, key in enumerate(keys):
-        for prev_key in keys[:i]:
-            if prev_key in key:
-                raise ValueError(
-                    f"Trainer key '{prev_key}' would match before more specific key '{key}'. "
-                    "Reorder TRAINER_LOADERS to check more specific keys first."
-                )
-
-
 def get_all_hf_repo_autoencoders(
     repo_id: str, download_location: str = "downloaded_saes"
-) -> list[str]:
+) -> tuple[list[str], list[str]]:
     download_location = os.path.join(download_location, repo_id.replace("/", "_"))
     config_dir = snapshot_download(
         repo_id, allow_patterns=["*config.json"], local_dir=download_location, force_download=False
     )
 
-    configs = []
+    config_locations = []
 
     for root, _, files in os.walk(config_dir):
         for file in files:
             if file == "config.json":
-                configs.append(os.path.join(root, file))
+                config_locations.append(os.path.join(root, file))
 
     repo_locations = []
 
-    for config in configs:
+    for config in config_locations:
         repo_location = config.split(f"{download_location}/")[1].split("/config.json")[0]
         repo_locations.append(repo_location)
 
@@ -89,30 +78,28 @@ def load_dictionary_learning_sae(
     device: str,
     dtype: torch.dtype,
     layer: Optional[int] = None,
+    download_location: str = "downloaded_saes",
 ) -> base_sae.BaseSAE:
-    """Unfortunate jank here.
-    We check for the presence of a trainer loader key in the filename, but there will be overlaps
-    between the keys (e.g. "StandardTrainer" and "StandardTrainerAprilUpdate"). To work around this,
-    we place the keys in order of specificity, so that the more specific key is checked first."""
+    download_location = os.path.join(download_location, repo_id.replace("/", "_"))
+    
+    config_file = f"{download_location}/{location}/config.json"
 
-    validate_trainer_order(TRAINER_LOADERS)
+    with open(config_file, "r") as f:
+        config = json.load(f)
+
+    trainer_class = config["trainer"]["trainer_class"]
 
     location = f"{location}/ae.pt"
 
-    for key, loader in TRAINER_LOADERS.items():
-        if key in location:
-            sae = loader(
-                repo_id=repo_id,
-                filename=location,
-                layer=layer,
-                model_name=model_name,
-                device=device,
-                dtype=dtype,
-            )
-            return sae
-
-    raise ValueError(f"Could not find a loader for {location}")
-
+    sae = TRAINER_LOADERS[trainer_class](
+        repo_id=repo_id,
+        filename=location,
+        layer=layer,
+        model_name=model_name,
+        device=device,
+        dtype=dtype,
+    )
+    return sae
 
 def run_evals(
     repo_id: str,
@@ -291,22 +278,6 @@ if __name__ == "__main__":
 
     device = general_utils.setup_environment()
 
-    model_name = "pythia-160m-deduped"
-    # model_name = "gemma-2-2b"
-    llm_batch_size = MODEL_CONFIGS[model_name]["batch_size"]
-    str_dtype = MODEL_CONFIGS[model_name]["dtype"]
-    torch_dtype = general_utils.str_to_dtype(str_dtype)
-
-    repo_id = "adamkarvonen/saebench_pythia-160m-deduped_width-2pow12_date-0104"
-
-    sae_locations = get_all_hf_repo_autoencoders(repo_id)
-
-    sae_locations = [sae_locations[0]]  # for testing
-
-    # Note: Unlearning is not recommended for models with < 2B parameters and we recommend an instruct tuned model
-    # Unlearning will also require requesting permission for the WMDP dataset (see unlearning/README.md)
-    # Absorption not recommended for models < 2B parameters
-
     # Select your eval types here.
     eval_types = [
         "absorption",
@@ -318,23 +289,45 @@ if __name__ == "__main__":
         # "unlearning",
     ]
 
-    if "autointerp" in eval_types:
-        try:
-            with open("openai_api_key.txt") as f:
-                api_key = f.read().strip()
-        except FileNotFoundError:
-            raise Exception("Please create openai_api_key.txt with your API key")
-    else:
-        api_key = None
+    repos = [
+        ("adamkarvonen/saebench_pythia-160m-deduped_width-2pow14_date-0104", "pythia-160m-deduped"),
+        ("adamkarvonen/saebench_gemma-2-2b_width-2pow14_date-0104", "gemma-2-2b"),
+    ]
 
-    run_evals(
-        repo_id=repo_id,
-        model_name=model_name,
-        sae_locations=sae_locations,
-        llm_batch_size=llm_batch_size,
-        llm_dtype=str_dtype,
-        device=device,
-        eval_types=eval_types,
-        api_key=api_key,
-        random_seed=RANDOM_SEED,
-    )
+    for repo_id, model_name in repos:
+        print(f"\n\n\nEvaluating {model_name} with {repo_id}\n\n\n")
+
+        # model_name = "gemma-2-2b"
+        llm_batch_size = MODEL_CONFIGS[model_name]["batch_size"]
+        str_dtype = MODEL_CONFIGS[model_name]["dtype"]
+        torch_dtype = general_utils.str_to_dtype(str_dtype)
+
+
+        sae_locations = get_all_hf_repo_autoencoders(repo_id)
+
+        # sae_locations = [sae_locations[0]]  # for testing
+
+        # Note: Unlearning is not recommended for models with < 2B parameters and we recommend an instruct tuned model
+        # Unlearning will also require requesting permission for the WMDP dataset (see unlearning/README.md)
+        # Absorption not recommended for models < 2B parameters
+
+        if "autointerp" in eval_types:
+            try:
+                with open("openai_api_key.txt") as f:
+                    api_key = f.read().strip()
+            except FileNotFoundError:
+                raise Exception("Please create openai_api_key.txt with your API key")
+        else:
+            api_key = None
+
+        run_evals(
+            repo_id=repo_id,
+            model_name=model_name,
+            sae_locations=sae_locations,
+            llm_batch_size=llm_batch_size,
+            llm_dtype=str_dtype,
+            device=device,
+            eval_types=eval_types,
+            api_key=api_key,
+            random_seed=RANDOM_SEED,
+        )
