@@ -55,10 +55,10 @@ class GatedSAE(base_sae.BaseSAE):
 def load_dictionary_learning_gated_sae(
     repo_id: str,
     filename: str,
-    layer: int,
     model_name: str,
     device: torch.device,
     dtype: torch.dtype,
+    layer: Optional[int] = None,
     local_dir: str = "downloaded_saes",
 ) -> GatedSAE:
     assert "ae.pt" in filename
@@ -83,7 +83,10 @@ def load_dictionary_learning_gated_sae(
     with open(path_to_config, "r") as f:
         config = json.load(f)
 
-    assert layer == config["trainer"]["layer"]
+    if layer is not None:
+        assert layer == config["trainer"]["layer"]
+    else:
+        layer = config["trainer"]["layer"]
 
     # Transformer lens often uses a shortened model name
     assert model_name in config["trainer"]["lm_name"]
