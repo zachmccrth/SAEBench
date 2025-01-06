@@ -36,6 +36,7 @@ output_folders = {
     "unlearning": "eval_results/unlearning",
 }
 
+
 TRAINER_LOADERS = {
     "MatroyshkaBatchTopKTrainer": batch_topk_sae.load_dictionary_learning_matroyshka_batch_topk_sae,
     "BatchTopKTrainer": batch_topk_sae.load_dictionary_learning_batch_topk_sae,
@@ -82,7 +83,7 @@ def load_dictionary_learning_sae(
     download_location: str = "downloaded_saes",
 ) -> base_sae.BaseSAE:
     download_location = os.path.join(download_location, repo_id.replace("/", "_"))
-    
+
     config_file = f"{download_location}/{location}/config.json"
 
     with open(config_file, "r") as f:
@@ -101,6 +102,59 @@ def load_dictionary_learning_sae(
         dtype=dtype,
     )
     return sae
+
+
+def verify_saes_load(
+    repo_id: str, sae_locations: list[str], model_name: str, device: str, dtype: torch.dtype
+):
+    """Verify that all SAEs load correctly. Useful to check this before a big evaluation run."""
+    for sae_location in sae_locations:
+        sae = load_dictionary_learning_sae(
+            repo_id=repo_id,
+            location=sae_location,
+            layer=None,
+            model_name=model_name,
+            device=device,
+            dtype=dtype,
+        )
+        del sae
+
+
+def filter_keywords(
+    sae_locations: list[str], exclude_keywords: list[str], include_keywords: list[str]
+) -> list[str]:
+    """
+    Filter a list of locations based on exclude and include keywords.
+
+    Args:
+        sae_locations: List of location strings to filter
+        exclude_keywords: List of keywords to exclude (case-insensitive)
+        include_keywords: List of keywords that must be present (case-insensitive)
+
+    Returns:
+        List of filtered locations that match the criteria
+    """
+    # Convert all keywords to lowercase for case-insensitive matching
+    exclude_lower = [k.lower() for k in exclude_keywords]
+    include_lower = [k.lower() for k in include_keywords]
+
+    filtered_locations = []
+
+    for location in sae_locations:
+        location_lower = location.lower()
+
+        # Check if any exclude keywords are present
+        should_exclude = any(keyword in location_lower for keyword in exclude_lower)
+
+        # Check if all include keywords are present
+        has_all_includes = all(keyword in location_lower for keyword in include_lower)
+
+        # Add location if it passes both criteria
+        if not should_exclude and has_all_includes:
+            filtered_locations.append(location)
+
+    return filtered_locations
+
 
 def run_evals(
     repo_id: str,
@@ -240,6 +294,10 @@ def run_evals(
         if eval_type not in eval_runners:
             raise ValueError(f"Unsupported eval type: {eval_type}")
 
+    verify_saes_load(
+        repo_id, sae_locations, model_name, device, general_utils.str_to_dtype(llm_dtype)
+    )
+
     # Run selected evaluations
     for eval_type in tqdm(eval_types, desc="Evaluations"):
         if eval_type == "autointerp" and api_key is None:
@@ -303,10 +361,13 @@ if __name__ == "__main__":
         str_dtype = MODEL_CONFIGS[model_name]["dtype"]
         torch_dtype = general_utils.str_to_dtype(str_dtype)
 
-
         sae_locations = get_all_hf_repo_autoencoders(repo_id)
 
-        # sae_locations = [sae_locations[0]]  # for testing
+        sae_locations = filter_keywords(
+            sae_locations, exclude_keywords=["checkpoints"], include_keywords=[]
+        )
+
+        sae_locations = [sae_locations[15]]
 
         # Note: Unlearning is not recommended for models with < 2B parameters and we recommend an instruct tuned model
         # Unlearning will also require requesting permission for the WMDP dataset (see unlearning/README.md)
