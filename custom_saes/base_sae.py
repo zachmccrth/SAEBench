@@ -95,7 +95,12 @@ class BaseSAE(nn.Module, ABC):
 
         test_input = "The scientist named the population, after their distinctive horn, Ovid’s Unicorn. These four-horned, silver-white unicorns were previously unknown to science"
 
-        _, cache = model.run_with_cache(test_input, prepend_bos=True)
+        _, cache = model.run_with_cache(
+            test_input,
+            prepend_bos=True,
+            names_filter=[self.cfg.hook_name],
+            stop_at_layer=self.cfg.hook_layer + 1,
+        )
         acts = cache[self.cfg.hook_name]
 
         encoded_acts = self.encode(acts)

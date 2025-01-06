@@ -85,9 +85,10 @@ class FeatureAbsorptionCalculator:
         self._validate_prompts_are_same_length(prompts)
         results: list[SpellingPrompt] = []
         for batch in batchify(prompts, batch_size=self.batch_size):
-            sae_in = self.model.run_with_cache([p.base for p in batch])[1][
-                sae.cfg.hook_name
-            ]
+            sae_in = self.model.run_with_cache([p.base for p in batch], 
+                                               stop_at_layer=sae.cfg.hook_layer + 1,
+                                               names_filter=[sae.cfg.hook_name]
+            )[1][sae.cfg.hook_name]
             sae_acts = sae.encode(sae_in)
             split_feats_active = (
                 sae_acts[:, self.word_token_pos, main_feature_ids]
