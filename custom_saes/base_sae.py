@@ -79,6 +79,8 @@ class BaseSAE(nn.Module, ABC):
         if torch.allclose(norms, torch.ones_like(norms)):
             return True
         else:
+            max_diff = torch.max(torch.abs(norms - torch.ones_like(norms)))
+            print(f"Decoder weights are not normalized. Max diff: {max_diff.item()}")
             return False
 
     @torch.no_grad()
