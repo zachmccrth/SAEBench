@@ -22,7 +22,7 @@ import custom_saes.gated_sae as gated_sae
 
 MODEL_CONFIGS = {
     "pythia-70m-deduped": {"batch_size": 512, "dtype": "float32", "layers": [3, 4], "d_model": 512},
-    "pythia-160m-deduped": {"batch_size": 512, "dtype": "float32", "layers": [8], "d_model": 768},
+    "pythia-160m-deduped": {"batch_size": 256, "dtype": "float32", "layers": [8], "d_model": 768},
     "gemma-2-2b": {"batch_size": 32, "dtype": "bfloat16", "layers": [5, 12, 19], "d_model": 2304},
 }
 

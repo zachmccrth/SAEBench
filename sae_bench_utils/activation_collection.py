@@ -13,6 +13,7 @@ import os
 # Relevant at ctx len 128
 LLM_NAME_TO_BATCH_SIZE = {
     "pythia-70m-deduped": 512,
+    "pythia-160m-deduped": 256,
     "gemma-2-2b": 32,
     "gemma-2-9b": 32,
     "gemma-2-2b-it": 32,
@@ -21,6 +22,7 @@ LLM_NAME_TO_BATCH_SIZE = {
 
 LLM_NAME_TO_DTYPE = {
     "pythia-70m-deduped": "float32",
+    "pythia-160m-deduped": "float32",
     "gemma-2-2b": "bfloat16",
     "gemma-2-2b-it": "bfloat16",
     "gemma-2-9b": "bfloat16",
