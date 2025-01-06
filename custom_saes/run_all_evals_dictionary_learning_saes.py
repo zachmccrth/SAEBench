@@ -37,6 +37,7 @@ output_folders = {
 }
 
 TRAINER_LOADERS = {
+    "MatroyshkaBatchTopKTrainer": batch_topk_sae.load_dictionary_learning_matroyshka_batch_topk_sae,
     "BatchTopKTrainer": batch_topk_sae.load_dictionary_learning_batch_topk_sae,
     "TopKTrainer": topk_sae.load_dictionary_learning_topk_sae,
     "StandardTrainerAprilUpdate": relu_sae.load_dictionary_learning_relu_sae,
@@ -281,11 +282,11 @@ if __name__ == "__main__":
     # Select your eval types here.
     eval_types = [
         "absorption",
-        "autointerp",
         "core",
         "scr",
         "tpp",
         "sparse_probing",
+        "autointerp",
         # "unlearning",
     ]
 

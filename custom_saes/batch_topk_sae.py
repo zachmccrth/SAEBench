@@ -153,6 +153,82 @@ def load_dictionary_learning_batch_topk_sae(
     return sae
 
 
+def load_dictionary_learning_matroyshka_batch_topk_sae(
+    repo_id: str,
+    filename: str,
+    model_name: str,
+    device: torch.device,
+    dtype: torch.dtype,
+    layer: Optional[int] = None,
+    local_dir: str = "downloaded_saes",
+) -> BatchTopKSAE:
+    assert "ae.pt" in filename
+
+    path_to_params = hf_hub_download(
+        repo_id=repo_id,
+        filename=filename,
+        force_download=False,
+        local_dir=local_dir,
+    )
+
+    pt_params = torch.load(path_to_params, map_location=torch.device("cpu"))
+
+    config_filename = filename.replace("ae.pt", "config.json")
+    path_to_config = hf_hub_download(
+        repo_id=repo_id,
+        filename=config_filename,
+        force_download=False,
+        local_dir=local_dir,
+    )
+
+    with open(path_to_config, "r") as f:
+        config = json.load(f)
+
+    if layer is not None:
+        assert layer == config["trainer"]["layer"]
+    else:
+        layer = config["trainer"]["layer"]
+
+    # Transformer lens often uses a shortened model name
+    assert model_name in config["trainer"]["lm_name"]
+
+    k = config["trainer"]["k"]
+
+    # We currently don't use group sizes, so we remove them to reuse the BatchTopKSAE class
+    del pt_params["group_sizes"]
+
+    # Print original keys for debugging
+    print("Original keys in state_dict:", pt_params.keys())
+
+    sae = BatchTopKSAE(
+        d_in=pt_params["b_dec"].shape[0],
+        d_sae=pt_params["b_enc"].shape[0],
+        k=k,
+        model_name=model_name,
+        hook_layer=layer,
+        device=device,
+        dtype=dtype,
+    )
+
+    sae.load_state_dict(pt_params)
+
+    sae.to(device=device, dtype=dtype)
+
+    d_sae, d_in = sae.W_dec.data.shape
+
+    assert d_sae >= d_in
+
+    if config["trainer"]["trainer_class"] == "MatroyshkaBatchTopKTrainer":
+        sae.cfg.architecture = "matroyshka_batch_topk"
+    else:
+        raise ValueError(f"Unknown trainer class: {config['trainer']['trainer_class']}")
+
+    normalized = sae.check_decoder_norms()
+    if not normalized:
+        raise ValueError("Decoder vectors are not normalized. Please normalize them")
+
+    return sae
+
 if __name__ == "__main__":
     repo_id = "adamkarvonen/saebench_pythia-160m-deduped_width-2pow12_date-0104"
     filename = "BatchTopKTrainer_EleutherAI_pythia-160m-deduped_ctx1024_0104/resid_post_layer_8/trainer_26/ae.pt"
@@ -165,6 +241,24 @@ if __name__ == "__main__":
     hook_name = f"blocks.{layer}.hook_resid_post"
 
     sae = load_dictionary_learning_batch_topk_sae(
-        repo_id, filename, layer, model_name, device, dtype
+        repo_id, filename, model_name, device, dtype, layer=layer
     )
     sae.test_sae(model_name)
+
+# Matroyshka BatchTopK SAE
+
+# if __name__ == "__main__":
+#     repo_id = "adamkarvonen/matroyshka_pythia_160m_16k"
+#     filename = "MatroyshkaBatchTopKTrainer_temp_100_EleutherAI_pythia-160m-deduped_ctx1024_0104/resid_post_layer_8/trainer_2/ae.pt"
+#     layer = 8
+
+#     device = "cuda" if torch.cuda.is_available() else "cpu"
+#     dtype = torch.float32
+
+#     model_name = "EleutherAI/pythia-160m-deduped"
+#     hook_name = f"blocks.{layer}.hook_resid_post"
+
+#     sae = load_dictionary_learning_matroyshka_batch_topk_sae(
+#         repo_id, filename, model_name, device, dtype, layer=layer
+#     )
+#     sae.test_sae(model_name)
