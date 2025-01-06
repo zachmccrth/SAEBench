@@ -34,14 +34,22 @@ class ReluSAE(base_sae.BaseSAE):
     def forward(self, x: torch.Tensor):
         x = self.encode(x)
         recon = self.decode(x)
-        return recon
-
+        return recon    
+    
     @torch.no_grad()
     def normalize_decoder(self):
         """
-        This is useful for doing analysis where e.g. feature activation magnitudes are important
-        If training the SAE using the Anthropic April update, the decoder weights are not normalized
+        This is useful for doing analysis where e.g. feature activation magnitudes are important.
+        If training the SAE using the Anthropic April update, the decoder weights are not normalized.
+        The normalization is done in float32 to avoid precision issues.
         """
+
+        original_dtype = self.W_dec.dtype
+        self.to(dtype=torch.float32)
+
+        # Errors can be relatively large in larger SAEs due to floating point precision
+        tolerance = 1e-4
+
         norms = torch.norm(self.W_dec, dim=1).to(dtype=self.dtype, device=self.device)
 
         print("Decoder vectors are not normalized. Normalizing.")
@@ -52,7 +60,11 @@ class ReluSAE(base_sae.BaseSAE):
         self.W_dec.data /= norms[:, None]
 
         new_norms = torch.norm(self.W_dec, dim=1)
-        assert torch.allclose(new_norms, torch.ones_like(new_norms))
+
+        if not torch.allclose(new_norms, torch.ones_like(new_norms), atol=tolerance):
+            max_norm_diff = torch.max(torch.abs(new_norms - torch.ones_like(new_norms)))
+            print(f"Max difference in norms: {max_norm_diff.item()}")
+            raise ValueError("Decoder weights are not normalized after normalization")
 
         self.W_enc *= norms
         self.b_enc *= norms
@@ -62,8 +74,9 @@ class ReluSAE(base_sae.BaseSAE):
         max_diff = torch.abs(initial_output - new_output).max()
         print(f"Max difference in output: {max_diff}")
 
-        # Errors can be relatively large in larger SAEs due to floating point precision
-        assert torch.allclose(initial_output, new_output, atol=1e-4)
+        assert torch.allclose(initial_output, new_output, atol=tolerance)
+
+        self.to(dtype=original_dtype)
 
 
 def load_dictionary_learning_relu_sae(
@@ -160,14 +173,13 @@ def load_dictionary_learning_relu_sae(
 
 
 if __name__ == "__main__":
-    repo_id = "canrager/lm_sae"
-    filename = "pythia70m_sweep_standard_ctx128_0712/resid_post_layer_4/trainer_8/ae.pt"
-    layer = 4
-
+    repo_id = "adamkarvonen/saebench_pythia-160m-deduped_width-2pow14_date-0104"
+    filename = "StandardTrainerAprilUpdate_EleutherAI_pythia-160m-deduped_ctx1024_0104/resid_post_layer_8/trainer_11/ae.pt"
+    layer = 8
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.float32
 
-    model_name = "EleutherAI/pythia-70m-deduped"
+    model_name = "EleutherAI/pythia-160m-deduped"
 
-    sae = load_dictionary_learning_relu_sae(repo_id, filename, layer, model_name, device, dtype)
+    sae = load_dictionary_learning_relu_sae(repo_id, filename, model_name, device, dtype, layer=layer)
     sae.test_sae(model_name)

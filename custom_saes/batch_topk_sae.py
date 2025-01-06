@@ -59,35 +59,6 @@ class BatchTopKSAE(base_sae.BaseSAE):
         return recon
 
     
-    @torch.no_grad()
-    def normalize_decoder(self):
-        """
-        This is useful for doing analysis where e.g. feature activation magnitudes are important
-        If training the SAE using the Anthropic April update, the decoder weights are not normalized
-        """
-        norms = torch.norm(self.W_dec, dim=1).to(dtype=self.dtype, device=self.device)
-
-        print("Decoder vectors are not normalized. Normalizing.")
-
-        test_input = torch.randn(10, self.cfg.d_in).to(dtype=self.dtype, device=self.device)
-        initial_output = self(test_input)
-
-        self.W_dec.data /= norms[:, None]
-
-        new_norms = torch.norm(self.W_dec, dim=1)
-        assert torch.allclose(new_norms, torch.ones_like(new_norms))
-
-        self.W_enc *= norms
-        self.b_enc *= norms
-
-        new_output = self(test_input)
-
-        max_diff = torch.abs(initial_output - new_output).max()
-        print(f"Max difference in output: {max_diff}")
-
-        # Errors can be relatively large in larger SAEs due to floating point precision
-        assert torch.allclose(initial_output, new_output, atol=1e-4)
-
 
 
 def load_dictionary_learning_batch_topk_sae(
@@ -179,7 +150,7 @@ def load_dictionary_learning_batch_topk_sae(
 
     normalized = sae.check_decoder_norms()
     if not normalized:
-        sae.normalize_decoder()
+        raise ValueError("Decoder vectors are not normalized. Please normalize them")
 
     return sae
 
@@ -256,7 +227,7 @@ def load_dictionary_learning_matroyshka_batch_topk_sae(
 
     normalized = sae.check_decoder_norms()
     if not normalized:
-        sae.normalize_decoder()
+        raise ValueError("Decoder vectors are not normalized. Please normalize them")
 
     return sae
 

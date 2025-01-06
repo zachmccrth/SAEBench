@@ -156,7 +156,7 @@ if __name__ == "__main__":
     hook_name = f"blocks.{layer}.hook_resid_post"
 
     sae = load_dictionary_learning_jump_relu_sae(
-        repo_id, filename, layer, model_name, device, dtype
+        repo_id, filename, model_name, device, dtype, layer=layer
     )
     sae.test_sae(model_name)
 

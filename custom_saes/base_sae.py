@@ -76,7 +76,10 @@ class BaseSAE(nn.Module, ABC):
         """
         norms = torch.norm(self.W_dec, dim=1).to(dtype=self.dtype, device=self.device)
 
-        if torch.allclose(norms, torch.ones_like(norms)):
+        # In bfloat16, it's common to see errors of (1/256) in the norms
+        tolerance = 1e-2 if self.W_dec.dtype in [torch.bfloat16, torch.float16] else 1e-5
+
+        if torch.allclose(norms, torch.ones_like(norms), atol=tolerance):
             return True
         else:
             max_diff = torch.max(torch.abs(norms - torch.ones_like(norms)))
