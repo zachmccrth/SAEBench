@@ -367,8 +367,6 @@ if __name__ == "__main__":
             sae_locations, exclude_keywords=["checkpoints"], include_keywords=[]
         )
 
-        sae_locations = [sae_locations[15]]
-
         # Note: Unlearning is not recommended for models with < 2B parameters and we recommend an instruct tuned model
         # Unlearning will also require requesting permission for the WMDP dataset (see unlearning/README.md)
         # Absorption not recommended for models < 2B parameters
