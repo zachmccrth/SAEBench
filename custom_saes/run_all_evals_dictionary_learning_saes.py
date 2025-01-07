@@ -280,7 +280,7 @@ def run_evals(
                     model_name="gemma-2-2b-it",
                     random_seed=random_seed,
                     llm_dtype=llm_dtype,
-                    llm_batch_size=llm_batch_size,
+                    llm_batch_size=llm_batch_size//8, # 8x smaller batch size for unlearning due to longer sequences
                 ),
                 selected_saes,
                 device,
