@@ -12,6 +12,7 @@ from sae_bench.evals.absorption.vocab import LETTERS
 
 
 def test_train_sparse_multi_probe_results_in_many_zero_weights():
+    torch.set_grad_enabled(True)
     x = torch.rand(1000, 100)
     y = torch.randint(2, (1000, 3))
     probe1 = train_sparse_multi_probe(x, y, l1_decay=0.01, device=torch.device("cpu"))
@@ -26,6 +27,7 @@ def test_train_sparse_multi_probe_results_in_many_zero_weights():
 
 
 def test_train_k_sparse_probes_returns_reasonable_values(gpt2_l4_sae: SAE):
+    torch.set_grad_enabled(True)
     train_labels = [("aaa", 0), ("bbb", 1), ("ccc", 2)]
     train_activations = torch.randn(3, 768)
     probes = train_k_sparse_probes(
@@ -57,6 +59,7 @@ def test_get_sae_acts_gives_same_results_batched_and_not_batched(gpt2_l4_sae: SA
 
 
 def test_eval_probe_and_sae_k_sparse_raw_scores_gives_sane_results(gpt2_l4_sae: SAE):
+    torch.set_grad_enabled(True)
     fake_probe = LinearProbe(768, 26)
     eval_data = [(letter, i) for i, letter in enumerate(LETTERS)]
     eval_activations = torch.randn(26, 768)

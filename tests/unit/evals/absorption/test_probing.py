@@ -73,6 +73,7 @@ def test_calc_pos_weights_handles_multiclass_samples():
 @pytest.mark.parametrize("seed", range(5))
 def test_train_binary_probe_scores_highly_on_fully_separable_datasets(seed):
     device = torch.device("cpu")
+    torch.set_grad_enabled(True)
     torch.manual_seed(seed)
     neg_center = 5.0 * torch.ones(64, device=device)
     pos_center = -5.0 * torch.ones(64, device=device)
@@ -137,6 +138,7 @@ def test_train_binary_probe_scores_highly_on_fully_separable_datasets(seed):
 @pytest.mark.parametrize("seed", range(5))
 def test_train_binary_probe_scores_highly_on_noisy_datasets(seed):
     device = torch.device("cpu")
+    torch.set_grad_enabled(True)
     torch.manual_seed(seed)
     neg_center = 1.0 * torch.ones(64)
     pos_center = -1.0 * torch.ones(64)
@@ -194,6 +196,7 @@ def test_train_binary_probe_scores_highly_on_noisy_datasets(seed):
 @pytest.mark.parametrize("seed", range(5))
 def test_train_multi_probe_scores_highly_on_fully_separable_datasets(seed):
     device = torch.device("cpu")
+    torch.set_grad_enabled(True)
     torch.manual_seed(seed)
     class1_center = 10 * torch.randn(64)
     class2_center = 10 * torch.randn(64)
@@ -242,6 +245,7 @@ def test_train_multi_probe_scores_highly_on_fully_separable_datasets(seed):
 @pytest.mark.parametrize("seed", range(5))
 def test_train_multi_probe_scores_highly_on_noisy_datasets(seed):
     device = torch.device("cpu")
+    torch.set_grad_enabled(True)
     torch.manual_seed(seed)
     class1_center = 0.5 * torch.randn(64)
     class2_center = 0.5 * torch.randn(64)
@@ -382,6 +386,7 @@ def test_gen_and_save_df_acts_probing(mock_to_csv, mock_model, tmp_path):
 
 
 def test_train_linear_probe_for_task():
+    torch.set_grad_enabled(True)
     train_df = pd.DataFrame({"answer_class": np.random.randint(0, 26, 1000)})
     test_df = pd.DataFrame({"answer_class": np.random.randint(0, 26, 1000)})
     device = torch.device("cpu")

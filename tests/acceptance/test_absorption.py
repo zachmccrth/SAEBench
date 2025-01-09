@@ -23,6 +23,7 @@ TEST_TOLERANCE = 0.06  # Pythia70m absorption values can be noisy as it doesn't 
 
 def test_end_to_end_different_seed():
     """Estimated runtime: 2 minutes"""
+    torch.set_grad_enabled(True)
     if torch.backends.mps.is_available():
         device = "mps"
     else:
