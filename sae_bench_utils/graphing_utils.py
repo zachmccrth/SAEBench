@@ -7,6 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import json
 import os
+from copy import deepcopy
 
 from scipy import stats
 from matplotlib.colors import Normalize
@@ -443,6 +444,28 @@ def find_eval_results_files(folders: list[str]) -> list[str]:
     return result_files
 
 
+def update_trainer_markers_and_colors(
+    results: dict[str, dict[str, Any]],
+    trainer_markers: dict[str, str],
+    trainer_colors: dict[str, str],
+) -> tuple[dict[str, str], dict[str, str]]:
+    trainer_markers = deepcopy(trainer_markers)
+    trainer_colors = deepcopy(trainer_colors)
+
+    available_markers = list(set(trainer_markers.values()))
+    available_colors = list(set(trainer_colors.values()))
+
+    existing_trainers = set(trainer_markers.keys())
+    all_trainers = {v["sae_class"] for v in results.values()}
+    new_trainers = all_trainers - existing_trainers
+
+    for trainer in new_trainers:
+        trainer_markers[trainer] = available_markers.pop(0)
+        trainer_colors[trainer] = available_colors.pop(0)
+
+    return trainer_markers, trainer_colors
+
+
 def plot_3var_graph(
     results: dict[str, dict[str, float]],
     title: str,
@@ -458,6 +481,8 @@ def plot_3var_graph(
 ):
     if not trainer_markers:
         trainer_markers = TRAINER_MARKERS
+
+    trainer_markers, _ = update_trainer_markers_and_colors(results, trainer_markers, TRAINER_COLORS)
 
     # Extract data from results
     l0_values = [data[x_axis_key] for data in results.values()]
@@ -626,6 +651,11 @@ def plot_2var_graph(
 
     if not trainer_colors:
         trainer_colors = TRAINER_COLORS
+
+    trainer_markers, trainer_colors = update_trainer_markers_and_colors(
+        results, trainer_markers, trainer_colors
+    )
+
     # Extract data from results
     l0_values = [data[x_axis_key] for data in results.values()]
     custom_metric_values = [data[custom_metric] for data in results.values()]
