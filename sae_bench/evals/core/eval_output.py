@@ -105,6 +105,33 @@ class SparsityMetrics(BaseMetrics):
         description="Average sum of absolute feature activations",
     )
 
+@dataclass
+class MiscMetrics(BaseMetrics):
+    freq_over_1_percent: float = Field(
+        title="Activation Frequency Over 1%",
+        description=f"Proportion of tokens that activate each feature more than 1% of the time",
+    )
+    freq_over_10_percent: float = Field(
+        title="Activation Frequency Over 10%",
+        description=f"Proportion of tokens that activate each feature more than 10% of the time",
+    )
+    normalized_freq_over_1_percent: float = Field(
+        title="Normalized Activation Frequency Over 1%",
+        description=f"Sum of > 1% activation frequency probabilities, normalized by the sum of all feature probabilities",
+    )
+    normalized_freq_over_10_percent: float = Field(
+        title="Normalized Activation Frequency Over 10%",
+        description=f"Sum of > 10% activation frequency probabilities, normalized by the sum of all feature probabilities",
+    )
+    average_max_encoder_cosine_sim: float = Field(
+        title="Average Max Encoder Cosine Similarity",
+        description="Average of the maximum cosine similarity with any other feature's encoder weights",
+    )
+    average_max_decoder_cosine_sim: float = Field(
+        title="Average Max Decoder Cosine Similarity",
+        description="Average of the maximum cosine similarity with any other feature's decoder weights",
+    )
+
 
 # Define metrics for token stats
 @dataclass
@@ -146,6 +173,10 @@ class CoreMetricCategories(BaseMetricCategories):
         title="Token Statistics",
         description="Statistics about the number of tokens used in evaluation",
     )
+    misc_metrics: MiscMetrics = Field(
+        title="Miscellaneous Metrics",
+        description="Miscellaneous metrics",
+    )
 
 
 # Define the feature-wise metrics
@@ -174,6 +205,14 @@ class CoreFeatureMetric(BaseResultDetail):
     encoder_decoder_cosine_sim: float = Field(
         title="Encoder-Decoder Cosine Similarity",
         description="Cosine similarity between encoder and decoder weights for each feature",
+    )
+    max_decoder_cosine_sim: float = Field(
+        title="Max Decoder Cosine Similarity",
+        description="Maximum cosine similarity with any other feature's decoder weights",
+    )
+    max_encoder_cosine_sim: float = Field(
+        title="Max Encoder Cosine Similarity",
+        description="Maximum cosine similarity with any other feature's encoder weights",
     )
 
 
