@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 packages = ["."]
 
 [project]
-name = "sae_bench_template"
+name = "sae-bench"
 version = "0.1.0"
 requires-python = ">=3.10"
 
@@ -28,18 +28,24 @@ dependencies = [
     "seaborn>=0.13.2",
     "plotly>=5.22.0",
     "matplotlib>=3.8.4",
-
-    # Dev / formatting stuff
-    "pytest>=8.0.2",
-    "nbformat>=5.10.4",
-    "ipykernel>=6.29.5",
-    "nbstripout>=0.7.1",
-    "loguru>=0.7.0",
     "tabulate>=0.9.0",
 
     # auto-interp
     "openai>=1.0.0",
 ]
+
+[tool.hatch.envs.dev]
+dependencies = [
+    "pytest>=8.0.2",
+    "nbformat>=5.10.4",
+    "ipykernel>=6.29.5",
+    "nbstripout>=0.7.1",
+    "loguru>=0.7.0",
+]
+
+[tool.hatch.envs.dev.scripts]
+unit-tests = "pytest tests/unit"
+e2e-tests = "pytest tests/e2e"
 
 [tool.pyright]
 typeCheckingMode = "standard"
