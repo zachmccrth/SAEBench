@@ -5,8 +5,12 @@ import sae_bench.evals.scr_and_tpp.main as scr_and_tpp
 import sae_bench.sae_bench_utils.testing_utils as testing_utils
 from sae_bench.sae_bench_utils.sae_selection_utils import select_saes_multiple_patterns
 
-tpp_results_filename = "tests/e2e/test_data/scr_and_tpp/tpp_expected_results.json"
-scr_results_filename = "tests/e2e/test_data/scr_and_tpp/scr_expected_results.json"
+tpp_results_filename = (
+    "tests/acceptance/test_data/scr_and_tpp/tpp_expected_results.json"
+)
+scr_results_filename = (
+    "tests/acceptance/test_data/scr_and_tpp/scr_expected_results.json"
+)
 
 
 def test_scr_end_to_end_different_seed():

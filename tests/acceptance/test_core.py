@@ -9,7 +9,7 @@ import sae_bench.evals.core.main as core
 from sae_bench.sae_bench_utils.sae_selection_utils import get_saes_from_regex
 from sae_bench.sae_bench_utils.testing_utils import validate_eval_output_format_file
 
-test_data_dir = "tests/e2e/test_data/core"
+test_data_dir = "tests/acceptance/test_data/core"
 expected_results_filename = os.path.join(test_data_dir, "core_expected_results.json")
 
 TEST_RELEASE = "sae_bench_pythia70m_sweep_gated_ctx128_0730"

@@ -484,7 +484,7 @@ def arg_parser():
 
 if __name__ == "__main__":
     """
-    python evals/sparse_probing/main.py \
+    python -m sae_bench.evals.sparse_probing.main \
     --sae_regex_pattern "sae_bench_pythia70m_sweep_standard_ctx128_0712" \
     --sae_block_pattern "blocks.4.hook_resid_post__trainer_10" \
     --model_name pythia-70m-deduped

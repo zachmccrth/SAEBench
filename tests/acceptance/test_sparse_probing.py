@@ -6,7 +6,7 @@ import sae_bench.sae_bench_utils.testing_utils as testing_utils
 from sae_bench.sae_bench_utils.sae_selection_utils import select_saes_multiple_patterns
 
 results_filename = (
-    "tests/e2e/test_data/sparse_probing/sparse_probing_expected_results.json"
+    "tests/acceptance/test_data/sparse_probing/sparse_probing_expected_results.json"
 )
 
 
