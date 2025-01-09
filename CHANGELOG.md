@@ -2,6 +2,17 @@
 
 
 
+## v0.2.0 (2025-01-09)
+
+### Feature
+
+* feat: add misc core metrics ([`2c731f6`](https://github.com/adamkarvonen/SAEBench/commit/2c731f611ed1090ea4c04857736cc5e3b9c2af0f))
+
+### Unknown
+
+* Make sure grad is enabled for absorption tests ([`bd25ca0`](https://github.com/adamkarvonen/SAEBench/commit/bd25ca01c92b8fc231bbc5a12f509720e00efd43))
+
+
 ## v0.1.0 (2025-01-09)
 
 ### Feature
