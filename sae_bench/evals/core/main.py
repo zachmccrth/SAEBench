@@ -1151,8 +1151,8 @@ def run_evaluations(args: argparse.Namespace) -> List[Dict[str, Any]]:
         n_eval_reconstruction_batches=args.n_eval_reconstruction_batches,
         n_eval_sparsity_variance_batches=args.n_eval_sparsity_variance_batches,
         eval_batch_size_prompts=args.batch_size_prompts,
-        compute_featurewise_density_statistics=args.compute_featurewise_density_statistics,
-        compute_featurewise_weight_based_metrics=args.compute_featurewise_weight_based_metrics,
+        compute_featurewise_density_statistics=True, # TODO: Don't hardcode this
+        compute_featurewise_weight_based_metrics=True,
         exclude_special_tokens_from_reconstruction=args.exclude_special_tokens_from_reconstruction,
         dataset=args.dataset,
         context_size=args.context_size,
