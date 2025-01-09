@@ -29,6 +29,73 @@ def dtype_to_str(dtype: torch.dtype) -> str:
     return dtype.__str__().split(".")[1]
 
 
+def filter_keywords(
+    sae_locations: list[str],
+    exclude_keywords: list[str],
+    include_keywords: list[str],
+    case_sensitive: bool = False,
+) -> list[str]:
+    """
+    Filter a list of locations based on exclude and include keywords.
+
+    Args:
+        sae_locations: List of location strings to filter
+        exclude_keywords: List of keywords to exclude
+        include_keywords: List of keywords that must be present
+        case_sensitive: Whether to perform case-sensitive filtering
+
+    Returns:
+        List of filtered locations that match the criteria
+    """
+    if not case_sensitive:
+        exclude = [k.lower() for k in exclude_keywords]
+        include = [k.lower() for k in include_keywords]
+    else:
+        exclude = exclude_keywords
+        include = include_keywords
+
+    filtered_locations = []
+
+    for location in sae_locations:
+        location_lower = location.lower()
+
+        # Check if any exclude keywords are present
+        should_exclude = any(keyword in location_lower for keyword in exclude)
+
+        # Check if all include keywords are present
+        has_all_includes = all(keyword in location_lower for keyword in include)
+
+        # Add location if it passes both criteria
+        if not should_exclude and has_all_includes:
+            filtered_locations.append(location)
+
+    return filtered_locations
+
+
+def filter_with_regex(filenames: list[str], regex_list: list[str]) -> list[str]:
+    """
+    Filters a list of filenames, returning those that match at least one of the given regex patterns.
+
+    Args:
+        filenames (list of str): The list of filenames to filter.
+        regex_list (list of str): A list of regular expressions to match.
+
+    Returns:
+        list of str: Filenames that match at least one regex.
+    """
+    # Compile all regex patterns for efficiency
+    compiled_regexes = [re.compile(pattern) for pattern in regex_list]
+
+    # Filter filenames that match any of the compiled regex patterns
+    matching_filenames = [
+        filename
+        for filename in filenames
+        if any(regex.search(filename) for regex in compiled_regexes)
+    ]
+
+    return matching_filenames
+
+
 def setup_environment():
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 

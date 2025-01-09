@@ -159,7 +159,7 @@ def run_evals(
                     model_name="gemma-2-2b-it",
                     random_seed=RANDOM_SEED,
                     llm_dtype=llm_dtype,
-                    llm_batch_size=llm_batch_size,
+                    llm_batch_size=llm_batch_size//8,
                 ),
                 selected_saes,
                 device,

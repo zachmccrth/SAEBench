@@ -66,7 +66,7 @@ TRAINER_LOADERS = {
 
 def get_all_hf_repo_autoencoders(
     repo_id: str, download_location: str = "downloaded_saes"
-) -> tuple[list[str], list[str]]:
+) -> list[str]:
     download_location = os.path.join(download_location, repo_id.replace("/", "_"))
     config_dir = snapshot_download(
         repo_id,
@@ -142,42 +142,6 @@ def verify_saes_load(
             dtype=dtype,
         )
         del sae
-
-
-def filter_keywords(
-    sae_locations: list[str], exclude_keywords: list[str], include_keywords: list[str]
-) -> list[str]:
-    """
-    Filter a list of locations based on exclude and include keywords.
-
-    Args:
-        sae_locations: List of location strings to filter
-        exclude_keywords: List of keywords to exclude (case-insensitive)
-        include_keywords: List of keywords that must be present (case-insensitive)
-
-    Returns:
-        List of filtered locations that match the criteria
-    """
-    # Convert all keywords to lowercase for case-insensitive matching
-    exclude_lower = [k.lower() for k in exclude_keywords]
-    include_lower = [k.lower() for k in include_keywords]
-
-    filtered_locations = []
-
-    for location in sae_locations:
-        location_lower = location.lower()
-
-        # Check if any exclude keywords are present
-        should_exclude = any(keyword in location_lower for keyword in exclude_lower)
-
-        # Check if all include keywords are present
-        has_all_includes = all(keyword in location_lower for keyword in include_lower)
-
-        # Add location if it passes both criteria
-        if not should_exclude and has_all_includes:
-            filtered_locations.append(location)
-
-    return filtered_locations
 
 
 def run_evals(
@@ -304,7 +268,8 @@ def run_evals(
                     model_name="gemma-2-2b-it",
                     random_seed=random_seed,
                     llm_dtype=llm_dtype,
-                    llm_batch_size=llm_batch_size,
+                    llm_batch_size=llm_batch_size
+                    // 8,  # 8x smaller batch size for unlearning due to longer sequences
                 ),
                 selected_saes,
                 device,
@@ -354,6 +319,7 @@ def run_evals(
                 dtype=general_utils.str_to_dtype(llm_dtype),
             )
             unique_sae_id = sae_location.replace("/", "_")
+            unique_sae_id = f"{repo_id.split('/')[1]}_{unique_sae_id}"
             selected_saes = [(unique_sae_id, sae)]
 
             os.makedirs(output_folders[eval_type], exist_ok=True)
@@ -396,7 +362,7 @@ if __name__ == "__main__":
 
         sae_locations = get_all_hf_repo_autoencoders(repo_id)
 
-        sae_locations = filter_keywords(
+        sae_locations = general_utils.filter_keywords(
             sae_locations, exclude_keywords=["checkpoints"], include_keywords=[]
         )
 

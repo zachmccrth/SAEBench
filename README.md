@@ -29,6 +29,7 @@ For more information, refer to our [blog post](https://www.neuronpedia.org/sae-b
 ### Supported Models and SAEs
 
 - **SAE Lens Pretrained SAEs**: Supports evaluations on any SAE Lens SAE.
+- **dictionary_learning SAES**: We support evaluations on any SAE trained with the [dictionary_learning repo](https://github.com/saprmarks/dictionary_learning) (see [Custom SAE Usage](#custom-sae-usage)).
 - **Custom SAEs**: Supports any general SAE object with `encode()` and `decode()` methods (see [Custom SAE Usage](#custom-sae-usage)).
 
 ### Installation
@@ -77,6 +78,8 @@ For a tutorial of using SAE Lens SAEs, including calculating L0 and Loss Recover
 ## Custom SAE Usage
 
 Our goal is to have first class support for custom SAEs as the field is rapidly evolving. Our evaluations can run on any SAE object with `encode()`, `decode()`, and a few config values. We recommend referring to `sae_bench_demo.ipynb`. In this notebook, we load a custom SAE and an SAE Bench baseline SAE, run them on two evals, and graph the results. There is additional information about custom SAE usage in `custom_saes/README.md`.
+
+If your SAEs are trained with the [dictionary_learning repo](https://github.com/saprmarks/dictionary_learning), you can evaluate your SAEs by passing in the name of the HuggingFace repo containing your SAEs. Refer to `SAEBench/custom_saes/run_all_evals_dictionary_learning_saes.py`.
 
 There are two ways to evaluate custom SAEs:
 
