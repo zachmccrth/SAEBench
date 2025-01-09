@@ -18,44 +18,41 @@ from collections import defaultdict
 
 TRAINER_MARKERS = {
     "standard": "o",
+    "standard_april_update": "o",
     "jumprelu": "X",
     "topk": "^",
+    "batch_topk": "s",
     "p_anneal": "*",
+    "matroyshka_batch_topk": "*",
     "gated": "d",
 }
 
 TRAINER_COLORS = {
     "standard": "blue",
+    "standard_april_update": "blue",
     "jumprelu": "orange",
     "topk": "green",
+    "batch_topk": "purple",
     "p_anneal": "red",
+    "matroyshka_batch_topk": "brown",
     "gated": "purple",
 }
 
 
 TRAINER_LABELS = {
     "standard": "Standard",
+    "standard_april_update": "Standard",
     "jumprelu": "JumpReLU",
     "topk": "TopK",
+    "batch_topk": "Batch TopK",
     "p_anneal": "Standard with P-Annealing",
+    "matroyshka_batch_topk": "Matroyshka Batch TopK",
     "gated": "Gated",
 }
 
 
 # default text size
 plt.rcParams.update({"font.size": 20})
-
-
-def get_results_dict(
-    selected_saes: list[tuple[str, str]], results_path: str, core_results_path: str
-) -> dict:
-    eval_results = get_eval_results(selected_saes, results_path)
-    core_results = get_core_results(selected_saes, core_results_path)
-
-    for sae in eval_results:
-        eval_results[sae].update(core_results[sae])
-
-    return eval_results
 
 
 def get_best_results(
@@ -141,33 +138,39 @@ def get_single_figure(
 
 
 def plot_results(
-    selected_saes: list[tuple[str, str]],
-    results_path: str,
-    core_results_path: str,
+    eval_filenames: list[str],
+    core_filenames: list[str],
+    eval_type: str,
     image_base_name: str,
     k: Optional[int] = None,
     trainer_markers: Optional[dict[str, str]] = None,
     trainer_colors: Optional[dict[str, str]] = None,
     title_prefix: str = "",
     return_fig: bool = False,
-    baseline_sae: Optional[tuple[str, str]] = None,
+    baseline_sae_path: Optional[str] = None,
     baseline_label: Optional[str] = None,
 ):
-    eval_results = get_eval_results(selected_saes, results_path)
-    core_results = get_core_results(selected_saes, core_results_path)
+    eval_results = get_eval_results(eval_filenames)
+    core_results = get_core_results(core_filenames)
 
     for sae in eval_results:
         eval_results[sae].update(core_results[sae])
 
-    custom_metric, custom_metric_name = get_custom_metric_key_and_name(results_path, k)
+    custom_metric, custom_metric_name = get_custom_metric_key_and_name(eval_type, k)
 
-    if baseline_sae:
-        baseline_results = get_eval_results([baseline_sae], results_path)
-        baseline_id = f"{baseline_sae[0]}_{baseline_sae[1]}"
-        baseline_results[baseline_id].update(
-            get_core_results([baseline_sae], core_results_path)[baseline_id]
+    if baseline_sae_path:
+        baseline_results = get_eval_results([baseline_sae_path])
+
+        baseline_filename = os.path.basename(baseline_sae_path)
+        baseline_results_key = baseline_filename.replace("_eval_results.json", "")
+
+        core_baseline_filename = baseline_sae_path.replace(eval_type, "core")
+
+        baseline_results[baseline_results_key].update(
+            get_core_results([core_baseline_filename])[baseline_results_key]
         )
-        baseline_value = baseline_results[baseline_id][custom_metric]
+
+        baseline_value = baseline_results[baseline_results_key][custom_metric]
         assert baseline_label, "Please provide a label for the baseline"
     else:
         baseline_value = None
@@ -303,7 +306,7 @@ def get_custom_metric_key_and_name(eval_path: str, k: Optional[int] = None) -> t
         custom_metric = "unlearning_score"
         custom_metric_name = "Unlearning Score"
     elif "core" in eval_path:
-        custom_metric = "frac_recovered"
+        custom_metric = "ce_loss_score"
         custom_metric_name = "Loss Recovered"
     else:
         raise ValueError("Please add the correct key for the custom metric")
@@ -311,40 +314,19 @@ def get_custom_metric_key_and_name(eval_path: str, k: Optional[int] = None) -> t
     return custom_metric, custom_metric_name
 
 
-def get_sae_class(sae_cfg: dict, sae_release) -> str:
-    if "sae_bench" in sae_release and "panneal" in sae_release:
-        return "p_anneal"
-
-    if sae_cfg["activation_fn_str"] == "topk":
-        return "topk"
-
-    return sae_cfg["architecture"]
-
-
-def get_sae_bench_train_tokens(sae_release: str, sae_id: str) -> int:
+def get_sae_bench_train_tokens(filename: str) -> int:
     """This is for SAE Bench internal use. The SAE cfg does not contain the number of training tokens, so we need to hardcode it."""
 
-    if "sae_bench" not in sae_release:
+    if "sae_bench" not in filename:
         raise ValueError("This function is only for SAE Bench releases")
 
-    if "pythia" in sae_release:
-        batch_size = 4096
-    else:
-        batch_size = 2048
+    batch_size = 2048
 
-    if "step" not in sae_id:
-        if "pythia" in sae_release:
-            steps = 48828
-        elif "2pow14" in sae_release:
-            steps = 146484
-        elif "2pow12" or "2pow16" in sae_release:
-            steps = 97656
-        else:
-            raise ValueError(f"sae release {sae_release} not recognized")
-
+    if "step" not in filename:
+        steps = 244140
         return steps * batch_size
     else:
-        match = re.search(r"step_(\d+)", sae_id)
+        match = re.search(r"step_(\d+)", filename)
         if match:
             step = int(match.group(1))
             return step * batch_size
@@ -365,12 +347,11 @@ def get_d_sae_string(d_sae: int) -> str:
         return f"{rounded_d_sae//1000}k"
 
 
-def get_eval_results(selected_saes: list[tuple[str, str]], results_path: str) -> dict[str, dict]:
+def get_eval_results(eval_filenames: list[str]) -> dict[str, dict]:
+    """eval_filenames is assumed to be a list of filenames of this format:
+    {sae_release}_{sae_id}_eval_results.json"""
     eval_results = {}
-    for sae_release, sae_id in selected_saes:
-        filename = f"{sae_release}_{sae_id}_eval_results.json".replace("/", "_")
-        filepath = os.path.join(results_path, filename)
-
+    for filepath in eval_filenames:
         if not os.path.exists(filepath):
             print(f"File not found: {filepath}")
             continue
@@ -378,62 +359,50 @@ def get_eval_results(selected_saes: list[tuple[str, str]], results_path: str) ->
         with open(filepath, "r") as f:
             single_sae_results = json.load(f)
 
-        if "tpp" in results_path:
-            eval_results[f"{sae_release}_{sae_id}"] = single_sae_results["eval_result_metrics"][
-                "tpp_metrics"
-            ]
-        elif "scr" in results_path:
-            eval_results[f"{sae_release}_{sae_id}"] = single_sae_results["eval_result_metrics"][
-                "scr_metrics"
-            ]
-        elif "absorption" in results_path:
-            eval_results[f"{sae_release}_{sae_id}"] = single_sae_results["eval_result_metrics"][
-                "mean"
-            ]
-        elif "autointerp" in results_path:
-            eval_results[f"{sae_release}_{sae_id}"] = single_sae_results["eval_result_metrics"][
-                "autointerp"
-            ]
-        elif "sparse_probing" in results_path:
-            eval_results[f"{sae_release}_{sae_id}"] = single_sae_results["eval_result_metrics"][
-                "sae"
-            ]
-        elif "unlearning" in results_path:
-            eval_results[f"{sae_release}_{sae_id}"] = single_sae_results["eval_result_metrics"][
-                "unlearning"
-            ]
-        elif "core" in results_path:
-            # We already load the core results in the get_core_results function
-            eval_results[f"{sae_release}_{sae_id}"] = {}
+        filename = os.path.basename(filepath)
+        results_key = filename.replace("_eval_results.json", "")
+
+        if "tpp" in filepath:
+            eval_results[results_key] = single_sae_results["eval_result_metrics"]["tpp_metrics"]
+        elif "scr" in filepath:
+            eval_results[results_key] = single_sae_results["eval_result_metrics"]["scr_metrics"]
+        elif "absorption" in filepath:
+            eval_results[results_key] = single_sae_results["eval_result_metrics"]["mean"]
+        elif "autointerp" in filepath:
+            eval_results[results_key] = single_sae_results["eval_result_metrics"]["autointerp"]
+        elif "sparse_probing" in filepath:
+            eval_results[results_key] = single_sae_results["eval_result_metrics"]["sae"]
+        elif "unlearning" in filepath:
+            eval_results[results_key] = single_sae_results["eval_result_metrics"]["unlearning"]
+        elif "core" in filepath:
+            # core has nested evaluation metrics, so we flatten them out here
+            core_results = single_sae_results["eval_result_metrics"]
+            eval_results[results_key] = {}
+            for parent_key, child_dict in core_results.items():
+                for metric_key, value in child_dict.items():
+                    eval_results[results_key][metric_key] = value
         else:
             raise ValueError("Please add the correct key for the eval results")
 
-        eval_results[f"{sae_release}_{sae_id}"]["eval_config"] = single_sae_results["eval_config"]
+        eval_results[results_key]["eval_config"] = single_sae_results["eval_config"]
 
         sae_config = single_sae_results["sae_cfg_dict"]
 
-        eval_results[f"{sae_release}_{sae_id}"]["sae_class"] = get_sae_class(
-            sae_config, sae_release
-        )
+        eval_results[results_key]["sae_class"] = sae_config["architecture"]
 
-        eval_results[f"{sae_release}_{sae_id}"]["d_sae"] = get_d_sae_string(sae_config["d_sae"])
+        eval_results[results_key]["d_sae"] = get_d_sae_string(sae_config["d_sae"])
 
-        if "sae_bench" in sae_release:
-            eval_results[f"{sae_release}_{sae_id}"]["train_tokens"] = get_sae_bench_train_tokens(
-                sae_release, sae_id
-            )
+        if "sae_bench" in filename:
+            eval_results[results_key]["train_tokens"] = get_sae_bench_train_tokens(filename)
         else:
-            eval_results[f"{sae_release}_{sae_id}"]["train_tokens"] = 1e-6
+            eval_results[results_key]["train_tokens"] = 1e-6
 
     return eval_results
 
 
-def get_core_results(selected_saes: list[tuple[str, str]], core_path: str) -> dict:
+def get_core_results(core_filenames: list[str]) -> dict:
     core_results = {}
-    for sae_release, sae_id in selected_saes:
-        filename = f"{sae_release}_{sae_id}_eval_results.json".replace("/", "_")
-        filepath = os.path.join(core_path, filename)
-
+    for filepath in core_filenames:
         if not os.path.exists(filepath):
             print(f"File not found: {filepath}")
             continue
@@ -446,8 +415,32 @@ def get_core_results(selected_saes: list[tuple[str, str]], core_path: str) -> di
             "ce_loss_score"
         ]
 
-        core_results[f"{sae_release}_{sae_id}"] = {"l0": l0, "frac_recovered": ce_score}
+        filename = os.path.basename(filepath)
+        results_key = filename.replace("_eval_results.json", "")
+        core_results[results_key] = {"l0": l0, "ce_loss_score": ce_score}
     return core_results
+
+
+def find_eval_results_files(folders: list[str]) -> list[str]:
+    """
+    Recursively explores the given list of folder names and finds all file paths
+    containing 'eval_results.json'. Returns a list of the full file paths.
+
+    Args:
+        folders (list[str]): A list of folder names to explore.
+
+    Returns:
+        list[str]: A list of full file paths containing 'eval_results.json'.
+    """
+    result_files = []
+
+    for folder in folders:
+        for root, dirs, files in os.walk(folder):
+            for file in files:
+                if "eval_results.json" in file:
+                    result_files.append(os.path.join(root, file))
+
+    return result_files
 
 
 def plot_3var_graph(
@@ -460,7 +453,7 @@ def plot_3var_graph(
     output_filename: Optional[str] = None,
     legend_location: str = "lower right",
     x_axis_key: str = "l0",
-    y_axis_key: str = "frac_recovered",
+    y_axis_key: str = "ce_loss_score",
     trainer_markers: Optional[dict[str, str]] = None,
 ):
     if not trainer_markers:
@@ -550,7 +543,7 @@ def plot_interactive_3var_graph(
     y_lims: Optional[tuple[float, float]] = None,
     output_filename: Optional[str] = None,
     x_axis_key: str = "l0",
-    y_axis_key: str = "frac_recovered",
+    y_axis_key: str = "ce_loss_score",
     title: str = "",
 ):
     # Extract data from results
@@ -1186,112 +1179,44 @@ def plot_training_steps(
     plt.show()
 
 
-# def plot_training_steps(
-#     results_dict: dict,
-#     metric_key: str,
-#     steps_key: str = "train_tokens",
-#     title: Optional[str] = None,
-#     y_label: Optional[str] = None,
-#     output_filename: Optional[str] = None,
-# ):
-#     # Initialize a defaultdict to store data for each trainer
-#     trainer_data = defaultdict(lambda: {"train_tokens": [], "metric_scores": []})
-#     all_steps = set()
-#     all_trainers = set()
+def get_sae_class_archived(sae_cfg: dict, sae_release) -> str:
+    """For results pre Jan 2025"""
+    if "sae_bench" in sae_release and "panneal" in sae_release:
+        return "p_anneal"
 
-#     # Extract data from the dictionary
-#     for key, value in results_dict.items():
-#         trainer = key.split("/")[-1].split("_")[1]
-#         trainer_class = value["sae_class"]
-#         trainer_label = label_lookup[trainer_class]
-#         layer = value["layer"]
-#         tokens_per_step = value["buffer"]["out_batch_size"]
-#         step = int(value[steps_key]) * tokens_per_step
-#         metric_scores = value[metric_key]
-#         trainer_key = f"{trainer_label} Layer {layer} Trainer {trainer}"
+    if sae_cfg["activation_fn_str"] == "topk":
+        return "topk"
 
-#         trainer_data[trainer_key]["train_tokens"].append(step)
-#         trainer_data[trainer_key]["metric_scores"].append(metric_scores)
-#         trainer_data[trainer_key]["l0"] = value["l0"]
-#         trainer_data[trainer_key]["sae_class"] = trainer_class
-#         all_steps.add(step)
-#         all_trainers.add(trainer_class)
+    return sae_cfg["architecture"]
 
-#     # Calculate average across all trainers
-#     average_trainer_data = {"train_tokens": [], "metric_scores": []}
-#     for step in sorted(all_steps):
-#         step_scores = [
-#             data["metric_scores"][data["train_tokens"].index(step)]
-#             for data in trainer_data.values()
-#             if step in data["train_tokens"]
-#         ]
-#         if step_scores:
-#             average_trainer_data["train_tokens"].append(step)
-#             average_trainer_data["metric_scores"].append(np.mean(step_scores))
-#     trainer_data["Average"] = average_trainer_data
 
-#     # Create the plot
-#     fig, ax = plt.subplots(figsize=(12, 6))
+def get_sae_bench_train_tokens_archived(sae_release: str, sae_id: str) -> int:
+    """For results pre Jan 2025.
+    This is for SAE Bench internal use. The SAE cfg does not contain the number of training tokens, so we need to hardcode it."""
 
-#     for trainer_key, data in trainer_data.items():
-#         steps = data["train_tokens"]
-#         print("Training tokens:", sorted(steps))
-#         metric_scores = data["metric_scores"]
+    if "sae_bench" not in sae_release:
+        raise ValueError("This function is only for SAE Bench releases")
 
-#         if trainer_key == "Average":
-#             color, trainer_class = "black", "Average"
-#         elif data["sae_class"] == "StandardTrainer":
-#             color, trainer_class = "red", label_lookup[data["sae_class"]]
-#         else:
-#             color, trainer_class = "blue", label_lookup[data["sae_class"]]
+    if "pythia" in sae_release:
+        batch_size = 4096
+    else:
+        batch_size = 2048
 
-#         sorted_data = sorted(zip(steps, metric_scores))
-#         steps, metric_scores = zip(*sorted_data)
+    if "step" not in sae_id:
+        if "pythia" in sae_release:
+            steps = 48828
+        elif "2pow14" in sae_release:
+            steps = 146484
+        elif "2pow12" or "2pow16" in sae_release:
+            steps = 97656
+        else:
+            raise ValueError(f"sae release {sae_release} not recognized")
 
-#         ax.plot(
-#             steps,
-#             metric_scores,
-#             marker="o",
-#             label=trainer_class,
-#             linewidth=4 if trainer_key == "Average" else 2,
-#             color=color,
-#             alpha=1 if trainer_key == "Average" else 0.3,
-#             zorder=10 if trainer_key == "Average" else 1,
-#         )
-
-#     # Set x-axis to logarithmic scale
-#     ax.set_xscale("log")
-
-#     # Set x-axis to symlog scale
-#     # ax.set_xscale("symlog", linthresh=100000)
-
-#     # # Adjust x-axis ticks
-#     # major_ticks = [0] + [10**i for i in range(0, int(np.log10(max(all_steps))) + 1)]
-#     # ax.set_xticks(major_ticks)
-#     # ax.set_xticklabels([str(tick) for tick in major_ticks])
-
-#     # Set labels and title
-#     if not y_label:
-#         y_label = metric_key.replace("_", " ").capitalize()
-#     ax.set_ylabel(y_label)
-#     ax.set_xlabel("Training Tokens")
-#     ax.set_title(title)
-
-#     # Add grid
-#     ax.grid(True, alpha=0.3)
-
-#     # Add custom legend
-#     legend_elements = []
-#     legend_elements.append(Line2D([0], [0], color="black", lw=3, label="Average"))
-#     if "StandardTrainer" in all_trainers:
-#         legend_elements.append(Line2D([0], [0], color="red", lw=3, label="Standard"))
-#     if "TrainerTopK" in all_trainers:
-#         legend_elements.append(Line2D([0], [0], color="blue", lw=3, label="TopK"))
-#     ax.legend(handles=legend_elements, loc="lower right")
-
-#     plt.tight_layout()
-
-#     if output_filename:
-#         plt.savefig(output_filename, bbox_inches="tight")
-
-#     plt.show()
+        return steps * batch_size
+    else:
+        match = re.search(r"step_(\d+)", sae_id)
+        if match:
+            step = int(match.group(1))
+            return step * batch_size
+        else:
+            raise ValueError("No step match found")
