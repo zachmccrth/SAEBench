@@ -164,6 +164,8 @@ def test_feature_metrics():
         "encoder_bias",
         "encoder_norm",
         "encoder_decoder_cosine_sim",
+        "max_decoder_cosine_sim",
+        "max_encoder_cosine_sim",
     }
 
     assert all(field in feature_metrics for field in expected_fields)

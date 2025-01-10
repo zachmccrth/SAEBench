@@ -926,6 +926,8 @@ def calculate_misc_metrics(feature_metrics: dict[str, torch.Tensor]) -> dict:
 
     feature_densities_F = torch.Tensor(feature_metrics["feature_density"])
     feature_densities_F = feature_densities_F.float().clone().detach()
+
+    frac_alive = (feature_densities_F > 0).float().mean().item()
     
     total_sum = feature_densities_F.sum()
     
@@ -949,6 +951,7 @@ def calculate_misc_metrics(feature_metrics: dict[str, torch.Tensor]) -> dict:
     return {
         "average_max_encoder_cosine_sim": average_max_encoder_cosine_sim,
         "average_max_decoder_cosine_sim": average_max_decoder_cosine_sim,
+        "frac_alive": frac_alive,
         "freq_over_1_percent": freq_over_1_percent,
         "freq_over_10_percent": freq_over_10_percent,
         "normalized_freq_over_1_percent": normalized_freq_over_1_percent,

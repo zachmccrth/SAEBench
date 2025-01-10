@@ -131,6 +131,10 @@ class MiscMetrics(BaseMetrics):
         title="Average Max Decoder Cosine Similarity",
         description="Average of the maximum cosine similarity with any other feature's decoder weights",
     )
+    frac_alive: float = Field(
+        title="Fraction of Alive Features",
+        description="Fraction of features that fired at least once during evaluation. This will likely be an underestimation due to a limited amount of tokens",
+    )
 
 
 # Define metrics for token stats
