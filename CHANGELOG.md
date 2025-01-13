@@ -2,6 +2,31 @@
 
 
 
+## v0.3.0 (2025-01-13)
+
+### Feature
+
+* feat: Add a frac alive calculation to core ([`0399550`](https://github.com/adamkarvonen/SAEBench/commit/039955013df919bd3d5cadc9a03bc96810351f37))
+
+### Unknown
+
+* added absorption fraction metric (#48)
+
+feat: added absorption fraction metric
+
+* Small fixes
+
+* remove unused FeatureAbsorptionCalculator._filter_prompts function
+
+---------
+
+Co-authored-by: Demian Till &lt;demian.till@cambridgeconsultants.com&gt; ([`7545ee3`](https://github.com/adamkarvonen/SAEBench/commit/7545ee345a1f2290625b4dd38e12f75084190ffd))
+
+* Add a script for organizing and uploading results ([`4689129`](https://github.com/adamkarvonen/SAEBench/commit/468912987d952d86e4a4eb952dbada577331dc7d))
+
+* Calculate featurewise statistics by default ([`bca84ca`](https://github.com/adamkarvonen/SAEBench/commit/bca84cabc8cd60f8b15f37668faece7bbd9adc23))
+
+
 ## v0.2.0 (2025-01-09)
 
 ### Feature
