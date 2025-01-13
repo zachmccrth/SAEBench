@@ -69,6 +69,7 @@ def run_eval(
             sae_release, sae_object_or_id, device
         )
         sae = sae.to(device=device, dtype=llm_dtype)
+        sae.fold_W_dec_norm()
 
         sae_result_path = general_utils.get_results_filepath(
             output_path, sae_release, sae_id
@@ -121,18 +122,21 @@ def run_eval(
         agg_df = _aggregate_results_df(raw_df)
 
         # aggregate results and produce the output
-        absorption_rates = []
+        mean_absorption_fractions = []
+        full_absorption_rates = []
         num_split_features = []
         eval_result_details = []
         for _, row in agg_df.iterrows():
             letter = row["letter"]
-            absorption_rates.append(row["absorption_rate"])
+            mean_absorption_fractions.append(row["mean_absorption_fraction"])
+            full_absorption_rates.append(row["full_absorption_rate"])
             num_split_features.append(row["num_split_feats"])
             eval_result_details.append(
                 AbsorptionResultDetail(
                     first_letter=letter,
-                    absorption_rate=row["absorption_rate"],
-                    num_absorption=row["num_absorption"],
+                    mean_absorption_fraction=row["mean_absorption_fraction"],
+                    full_absorption_rate=row["full_absorption_rate"],
+                    num_full_absorption=row["num_full_absorption"],
                     num_probe_true_positives=row["num_probe_true_positives"],
                     num_split_features=row["num_split_feats"],
                 )
@@ -145,7 +149,10 @@ def run_eval(
             datetime_epoch_millis=int(datetime.now().timestamp() * 1000),
             eval_result_metrics=AbsorptionMetricCategories(
                 mean=AbsorptionMeanMetrics(
-                    mean_absorption_score=statistics.mean(absorption_rates),
+                    mean_absorption_fraction_score=statistics.mean(
+                        mean_absorption_fractions
+                    ),
+                    mean_full_absorption_score=statistics.mean(full_absorption_rates),
                     mean_num_split_features=statistics.mean(num_split_features),
                 )
             ),
@@ -171,7 +178,7 @@ def _aggregate_results_df(
     df: pd.DataFrame,
 ) -> pd.DataFrame:
     agg_df = (
-        df[["letter", "is_absorption"]]
+        df[["letter", "absorption_fraction", "is_full_absorption"]]
         .groupby(["letter"])
         .sum()
         .reset_index()
@@ -190,9 +197,12 @@ def _aggregate_results_df(
         )
     )
     agg_df["num_split_feats"] = agg_df["split_feats"].apply(len)
-    agg_df["num_absorption"] = agg_df["is_absorption"]
-    agg_df["absorption_rate"] = (
-        agg_df["num_absorption"] / agg_df["num_probe_true_positives"]
+    agg_df["mean_absorption_fraction"] = (
+        agg_df["absorption_fraction"] / agg_df["num_probe_true_positives"]
+    )
+    agg_df["num_full_absorption"] = agg_df["is_full_absorption"]
+    agg_df["full_absorption_rate"] = (
+        agg_df["num_full_absorption"] / agg_df["num_probe_true_positives"]
     )
     return agg_df
 

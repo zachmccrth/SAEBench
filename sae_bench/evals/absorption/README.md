@@ -1,4 +1,8 @@
-This repo implements David Chanin's feature absorption metric.
+This repo implements David Chanin's feature absorption metric, with the absorption fraction metric added by Demian Till.
+
+The code produces two scores:
+- `mean_absorption_fraction_score` captures both full and partial absorption with an arbitrary number of absorbing latents. For a given SAE input, the absorption fraction is essentially the fraction of the SAE reconstruction's projection onto the ground truth probe activation that is not accounted for by the main latents which usually represent the feature in question.
+- `mean_full_absorption_score` captures full absorption (not partial absorption) with a single absorbing latent. For a given SAE input, full absorption is judged to occur when the feature is present according to the ground truth probe, the main latents usually representing that feature have zero activation, and another latent compensates with a projection onto the ground truth probe direction which is above a set threshold as a proportion of the ground truth probe activation.
 
 Estimated runtime:
 

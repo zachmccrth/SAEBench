@@ -55,5 +55,6 @@ def test_calculate_projection_and_cos_sims_gives_sane_results(
         "projection_feats",
         "projection_feat_acts",
         "projection_feat_probe_cos",
-        "is_absorption",
+        "absorption_fraction",
+        "is_full_absorption",
     ]

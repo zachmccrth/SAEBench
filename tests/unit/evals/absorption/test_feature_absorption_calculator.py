@@ -11,25 +11,7 @@ from sae_bench.evals.absorption.feature_absorption_calculator import (
 )
 
 
-def test_FeatureAbsorptionCalculator_filter_prompts_removes_prompts_where_main_features_fired(
-    gpt2_model: HookedTransformer,
-):
-    words = [" cat", " dog", " fish"]
-    calculator = FeatureAbsorptionCalculator(gpt2_model, icl_word_list=["dog"])
-    prompts = calculator._build_prompts(words)
-    mock_sae = MagicMock()
-    sae_acts = torch.zeros(3, 10, 768)
-    sae_acts[0, :, 3] = 1.0  # feature 3 fires on prompt 0 at all token positions
-    mock_sae.encode.return_value = sae_acts
-    mock_sae.cfg.hook_name = "blocks.0.hook_resid_post"
-
-    filtered_prompts = calculator._filter_prompts(prompts, mock_sae, [3, 4])
-
-    assert len(filtered_prompts) == 2
-    assert filtered_prompts == prompts[1:]
-
-
-def test_FeatureAbsorptionCalculator_filter_prompts_errors_if_prompts_are_variable_lengths(
+def test_FeatureAbsorptionCalculator_validate_prompts_are_same_length_errors_if_prompts_are_variable_lengths(
     gpt2_model: HookedTransformer,
     gpt2_l4_sae: SAE,
 ):
@@ -42,7 +24,7 @@ def test_FeatureAbsorptionCalculator_filter_prompts_errors_if_prompts_are_variab
     prompts[1].base += "EXTRA TEXT"
 
     with pytest.raises(ValueError):
-        calculator._filter_prompts(prompts, gpt2_l4_sae, [3, 4])
+        calculator._validate_prompts_are_same_length(prompts)
 
 
 def test_FeatureAbsorptionCalculator_calculate_absorption_results_look_reasonable(
@@ -60,7 +42,6 @@ def test_FeatureAbsorptionCalculator_calculate_absorption_results_look_reasonabl
         probe_direction=probe_dir,
         layer=4,
         main_feature_ids=[1, 2, 3],
-        filter_prompts=False,
     )
     with torch.no_grad():
         assert sampled_results.main_feature_ids == [1, 2, 3]

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import numpy as np
 import torch
 from sae_lens import SAE
 from tqdm.autonotebook import tqdm
@@ -34,7 +35,8 @@ class WordAbsorptionResult:
     probe_projection: float
     main_feature_scores: list[FeatureScore]
     top_projection_feature_scores: list[FeatureScore]
-    is_absorption: bool
+    absorption_fraction: float
+    is_full_absorption: bool
 
 
 @dataclass
@@ -71,37 +73,6 @@ class FeatureAbsorptionCalculator:
     # the probe projection of the top projecting feature must contribute at least this much to the total probe projection to count as absorption
     probe_projection_proportion_threshold: float = 0.4
 
-    @torch.inference_mode()
-    def _filter_prompts(
-        self,
-        prompts: list[SpellingPrompt],
-        sae: SAE,
-        main_feature_ids: list[int],
-    ) -> list[SpellingPrompt]:
-        """
-        Filter out any prompts where the main features are already active.
-        NOTE: All prompts must have the same token length
-        """
-        self._validate_prompts_are_same_length(prompts)
-        results: list[SpellingPrompt] = []
-        for batch in batchify(prompts, batch_size=self.batch_size):
-            sae_in = self.model.run_with_cache(
-                [p.base for p in batch],
-                stop_at_layer=sae.cfg.hook_layer + 1,
-                names_filter=[sae.cfg.hook_name],
-            )[1][sae.cfg.hook_name]
-            sae_acts = sae.encode(sae_in)
-            split_feats_active = (
-                sae_acts[:, self.word_token_pos, main_feature_ids]
-                .sum(dim=-1)
-                .float()
-                .tolist()
-            )
-            for prompt, res in zip(batch, split_feats_active):
-                if res < EPS:
-                    results.append(prompt)
-        return results
-
     def _build_prompts(self, words: list[str]) -> list[SpellingPrompt]:
         return [
             create_icl_prompt(
@@ -116,7 +87,7 @@ class FeatureAbsorptionCalculator:
             for word in words
         ]
 
-    def _is_absorption(
+    def _is_full_absorption(
         self,
         probe_projection: float,
         main_feature_scores: list[FeatureScore],
@@ -150,21 +121,17 @@ class FeatureAbsorptionCalculator:
         probe_direction: torch.Tensor,
         main_feature_ids: list[int],
         layer: int,
-        filter_prompts: bool = True,
         show_progress: bool = True,
     ) -> AbsorptionResults:
         """
-        This method calculates the absorption for each word in the list of words. If `max_ablation_samples` is provided,
-        this method will randomly sample that many words to calculate absorption for as a performance optimization.
-        If `filter_prompts` is True, this method will filter out any prompts where the main features are already active, as these cannot be absorption.
+        This method calculates the absorption for each word in the list of words
         """
         if probe_direction.ndim != 1:
             raise ValueError("probe_direction must be 1D")
         # make sure the probe direction is a unit vector
         probe_direction = probe_direction / probe_direction.norm()
         prompts = self._build_prompts(words)
-        if filter_prompts:
-            prompts = self._filter_prompts(prompts, sae, main_feature_ids)
+        self._validate_prompts_are_same_length(prompts)
         results: list[WordAbsorptionResult] = []
         cos_sims = (
             torch.nn.functional.cosine_similarity(
@@ -190,6 +157,21 @@ class FeatureAbsorptionCalculator:
                 sae_acts = batch_sae_acts[i]
                 act_probe_proj = batch_probe_projections[i].cpu().item()
                 sae_act_probe_proj = batch_sae_probe_projections[i]
+
+                # calculate absorption_fraction
+                main_feats_probe_proj = (
+                    torch.sum(sae_act_probe_proj[main_feature_ids]).cpu().item()
+                )
+                all_feats_probe_proj = torch.sum(sae_act_probe_proj).cpu().item()
+                if main_feats_probe_proj >= act_probe_proj or all_feats_probe_proj <= 0:
+                    absorption_fraction = 0.0
+                else:
+                    absorption_fraction = (
+                        all_feats_probe_proj - main_feats_probe_proj
+                    ) / all_feats_probe_proj
+                    absorption_fraction = np.clip(absorption_fraction, 0.0, 1.0)
+
+                # determine whether this is full absorption with a single absorbing latent
                 with torch.inference_mode():
                     # sort by negative ig score
                     top_proj_feats = sae_act_probe_proj.topk(
@@ -205,21 +187,23 @@ class FeatureAbsorptionCalculator:
                         probe_cos_sims=cos_sims,
                         sae_acts=sae_acts,
                     )
-                    is_absorption = self._is_absorption(
+                    is_full_absorption = self._is_full_absorption(
                         probe_projection=act_probe_proj,
                         top_projection_feature_scores=top_projection_feature_scores,
                         main_feature_scores=main_feature_scores,
                     )
-                    results.append(
-                        WordAbsorptionResult(
-                            word=prompt.word,
-                            prompt=prompt.base,
-                            probe_projection=act_probe_proj,
-                            main_feature_scores=main_feature_scores,
-                            top_projection_feature_scores=top_projection_feature_scores,
-                            is_absorption=is_absorption,
-                        )
+
+                results.append(
+                    WordAbsorptionResult(
+                        word=prompt.word,
+                        prompt=prompt.base,
+                        probe_projection=act_probe_proj,
+                        main_feature_scores=main_feature_scores,
+                        top_projection_feature_scores=top_projection_feature_scores,
+                        absorption_fraction=absorption_fraction,
+                        is_full_absorption=is_full_absorption,
                     )
+                )
         return AbsorptionResults(
             main_feature_ids=main_feature_ids,
             word_results=results,

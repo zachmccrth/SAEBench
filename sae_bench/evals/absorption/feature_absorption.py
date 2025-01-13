@@ -99,7 +99,8 @@ def calculate_projection_and_cos_sims(
                     score.probe_cos_sim
                     for score in sample.top_projection_feature_scores
                 ],
-                "is_absorption": sample.is_absorption,
+                "absorption_fraction": sample.absorption_fraction,
+                "is_full_absorption": sample.is_full_absorption,
             }
             results.append(result)
     result_df = pd.DataFrame(results)
@@ -131,7 +132,6 @@ def get_stats_and_likely_false_negative_tokens(
         potential_false_negatives = raw_df[
             (raw_df["answer_letter"] == letter)
             & (raw_df[f"score_probe_{letter}"] > 0)
-            & (raw_df[f"score_sparse_sae_{letter}_k_{k}"] <= 0)
         ]["token"].tolist()
         num_split_feats_true_positives = raw_df[
             (raw_df["answer_letter"] == letter)

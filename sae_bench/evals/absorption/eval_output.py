@@ -15,10 +15,14 @@ EVAL_TYPE_ID_ABSORPTION = "absorption_first_letter"
 # Define the metrics for each metric category, and include a title and description for each.
 @dataclass
 class AbsorptionMeanMetrics(BaseMetrics):
-
-    mean_absorption_score: float = Field(
-        title="Mean Absorption Score",
-        description="Average of the absorption scores across all letters",
+    mean_absorption_fraction_score: float = Field(
+        title="Mean Absorption Fraction Score",
+        description="Average of the absorption fraction scores across all letters",
+        json_schema_extra=DEFAULT_DISPLAY,
+    )
+    mean_full_absorption_score: float = Field(
+        title="Mean Full Absorption Score",
+        description="Average of the full absorption scores across all letters",
         json_schema_extra=DEFAULT_DISPLAY,
     )
     mean_num_split_features: float = Field(
@@ -51,8 +55,13 @@ class AbsorptionResultDetail(BaseResultDetail):
             return value
         raise ValueError("First letter must be a single letter")
 
-    absorption_rate: float = Field(title="Absorption Rate", description="")
-    num_absorption: int = Field(title="Num Absorption", description="")
+    mean_absorption_fraction: float = Field(
+        title="Mean Absorption Fraction", description=""
+    )
+    full_absorption_rate: float = Field(
+        title="Rate of Full Absorption", description=""
+    )
+    num_full_absorption: int = Field(title="Num Full Absorption", description="")
     num_probe_true_positives: int = Field(
         title="Num Probe True Positives", description=""
     )
