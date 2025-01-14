@@ -1,6 +1,6 @@
 ### Setup
 1. request the forget corpus from this [link](https://docs.google.com/forms/d/e/1FAIpQLSdnQc8Qn0ozSDu3VE8HLoHPvhpukX1t1dIwE5K5rJw9lnOjKw/viewform)
-2. you will get one file: `bio-forget-corpus.jsonl`, place it the `evals/unlearning/data` directory
+2. you will get one file: `bio-forget-corpus.jsonl`, place it the `sae_bench/evals/unlearning/data` directory
 3. see [this page](https://huggingface.co/datasets/cais/wmdp-corpora) for more details
 
 To run this eval, run `cd SAE_Bench_Template` and a command such as this one:

@@ -298,10 +298,8 @@ def run_evals(
             print("Skipping autointerp evaluation due to missing API key")
             continue
         if eval_type == "unlearning":
-            if not os.path.exists("./evals/unlearning/data/bio-forget-corpus.jsonl"):
-                print(
-                    "Skipping unlearning evaluation due to missing bio-forget-corpus.jsonl"
-                )
+            if not os.path.exists("./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"):
+                print("Skipping unlearning evaluation due to missing bio-forget-corpus.jsonl")
                 continue
 
         print(f"\n\n\nRunning {eval_type} evaluation\n\n\n")

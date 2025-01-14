@@ -41,7 +41,7 @@ def get_forget_retain_data(
         raise Exception("Unknown retain corpora")
 
     forget_dataset = []
-    for line in open(f"./evals/unlearning/data/{forget_corpora}.jsonl", "r"):
+    for line in open(f"./sae_bench/evals/unlearning/data/{forget_corpora}.jsonl", "r"):
         if "bio-forget-corpus" in forget_corpora:
             raw_text = json.loads(line)["text"]
         else:
@@ -63,16 +63,12 @@ def get_shuffled_forget_retain_tokens(
     get shuffled forget tokens and retain tokens, with given batch size and sequence length
     note: wikitext has less than 2048 batches with seq_len=1024
     """
-    forget_dataset, retain_dataset = get_forget_retain_data(
-        forget_corpora, retain_corpora
-    )
+    forget_dataset, retain_dataset = get_forget_retain_data(forget_corpora, retain_corpora)
 
     print(len(forget_dataset), len(forget_dataset[0]))
     print(len(retain_dataset), len(retain_dataset[0]))
 
-    shuffled_forget_dataset = random.sample(
-        forget_dataset, min(batch_size, len(forget_dataset))
-    )
+    shuffled_forget_dataset = random.sample(forget_dataset, min(batch_size, len(forget_dataset)))
 
     forget_tokens = dataset_utils.tokenize_and_concat_dataset(
         model.tokenizer, shuffled_forget_dataset, seq_len=seq_len
@@ -96,9 +92,7 @@ def gather_residual_activations(model: HookedTransformer, target_layer: int, inp
         target_act = outputs[0]
         return outputs
 
-    handle = model.model.layers[target_layer].register_forward_hook(
-        gather_target_act_hook
-    )
+    handle = model.model.layers[target_layer].register_forward_hook(gather_target_act_hook)
     _ = model.forward(inputs)
     handle.remove()
     return target_act
@@ -119,12 +113,8 @@ def get_top_features(forget_score, retain_score, retain_threshold=0.01):
 
 
 def check_existing_results(artifacts_folder: str, sae_name) -> bool:
-    forget_path = os.path.join(
-        artifacts_folder, sae_name, SPARSITIES_DIR, FORGET_FILENAME
-    )
-    retain_path = os.path.join(
-        artifacts_folder, sae_name, SPARSITIES_DIR, RETAIN_FILENAME
-    )
+    forget_path = os.path.join(artifacts_folder, sae_name, SPARSITIES_DIR, FORGET_FILENAME)
+    retain_path = os.path.join(artifacts_folder, sae_name, SPARSITIES_DIR, RETAIN_FILENAME)
     return os.path.exists(forget_path) and os.path.exists(retain_path)
 
 
@@ -168,17 +158,11 @@ def save_results(
 ):
     output_dir = os.path.join(artifacts_folder, sae_name, SPARSITIES_DIR)
     os.makedirs(output_dir, exist_ok=True)
-    np.savetxt(
-        os.path.join(output_dir, FORGET_FILENAME), feature_sparsity_forget, fmt="%f"
-    )
-    np.savetxt(
-        os.path.join(output_dir, RETAIN_FILENAME), feature_sparsity_retain, fmt="%f"
-    )
+    np.savetxt(os.path.join(output_dir, FORGET_FILENAME), feature_sparsity_forget, fmt="%f")
+    np.savetxt(os.path.join(output_dir, RETAIN_FILENAME), feature_sparsity_retain, fmt="%f")
 
 
-def load_sparsity_data(
-    artifacts_folder: str, sae_name: str
-) -> tuple[np.ndarray, np.ndarray]:
+def load_sparsity_data(artifacts_folder: str, sae_name: str) -> tuple[np.ndarray, np.ndarray]:
     forget_sparsity = np.loadtxt(
         os.path.join(artifacts_folder, sae_name, SPARSITIES_DIR, FORGET_FILENAME),
         dtype=float,
@@ -211,6 +195,4 @@ def save_feature_sparsity(
         model, sae, forget_tokens, retain_tokens, batch_size
     )
 
-    save_results(
-        artifacts_folder, sae_name, feature_sparsity_forget, feature_sparsity_retain
-    )
+    save_results(artifacts_folder, sae_name, feature_sparsity_forget, feature_sparsity_retain)
