@@ -126,9 +126,7 @@ def run_eval_single_dataset(
             all_train_acts_BLD
         )
 
-        all_test_acts_BD = activation_collection.create_meaned_model_activations(
-            all_test_acts_BLD
-        )
+        all_test_acts_BD = activation_collection.create_meaned_model_activations(all_test_acts_BLD)
 
         llm_probes, llm_test_accuracies = probe_training.train_probe_on_activations(
             all_train_acts_BD,
@@ -141,12 +139,15 @@ def run_eval_single_dataset(
         llm_test_accuracy = average_test_accuracy(llm_test_accuracies)
 
         for k in config.k_values:
-            llm_top_k_probes, llm_top_k_test_accuracies = (
-                probe_training.train_probe_on_activations(
-                    all_train_acts_BD,
-                    all_test_acts_BD,
-                    select_top_k=k,
-                )
+            # We use GPU here as sklearn.fit is slow on large input dimensions, all other probe training is done with sklearn.fit
+            llm_top_k_probes, llm_top_k_test_accuracies = probe_training.train_probe_on_activations(
+                all_train_acts_BD,
+                all_test_acts_BD,
+                select_top_k=k,
+                use_sklearn=False,
+                batch_size=250,
+                epochs=100,
+                lr=1e-2,
             )
             llm_results[f"llm_top_{k}_test_accuracy"] = average_test_accuracy(
                 llm_top_k_test_accuracies
@@ -207,12 +208,10 @@ def run_eval_single_dataset(
         results_dict[llm_result_key] = llm_result_value
 
     for k in config.k_values:
-        sae_top_k_probes, sae_top_k_test_accuracies = (
-            probe_training.train_probe_on_activations(
-                all_sae_train_acts_BF,
-                all_sae_test_acts_BF,
-                select_top_k=k,
-            )
+        sae_top_k_probes, sae_top_k_test_accuracies = probe_training.train_probe_on_activations(
+            all_sae_train_acts_BF,
+            all_sae_test_acts_BF,
+            select_top_k=k,
         )
         results_dict[f"sae_top_{k}_test_accuracy"] = average_test_accuracy(
             sae_top_k_test_accuracies
@@ -254,9 +253,7 @@ def run_eval_single_sae(
             save_activations,
         )
 
-    results_dict = general_utils.average_results_dictionaries(
-        dataset_results, config.dataset_names
-    )
+    results_dict = general_utils.average_results_dictionaries(dataset_results, config.dataset_names)
 
     for dataset_name, dataset_result in dataset_results.items():
         results_dict[f"{dataset_name}"] = dataset_result
@@ -306,9 +303,7 @@ def run_eval(
         )
         sae = sae.to(device=device, dtype=llm_dtype)
 
-        sae_result_path = general_utils.get_results_filepath(
-            output_path, sae_release, sae_id
-        )
+        sae_result_path = general_utils.get_results_filepath(output_path, sae_release, sae_id)
 
         if os.path.exists(sae_result_path) and not force_rerun:
             print(f"Skipping {sae_release}_{sae_id} as results already exist")
@@ -388,9 +383,7 @@ def create_config_and_selected_saes(
     if args.llm_batch_size is not None:
         config.llm_batch_size = args.llm_batch_size
     else:
-        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[
-            config.model_name
-        ]
+        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[config.model_name]
 
     if args.llm_dtype is not None:
         config.llm_dtype = args.llm_dtype
@@ -441,9 +434,7 @@ def arg_parser():
         default="eval_results/sparse_probing",
         help="Output folder",
     )
-    parser.add_argument(
-        "--force_rerun", action="store_true", help="Force rerun of experiments"
-    )
+    parser.add_argument("--force_rerun", action="store_true", help="Force rerun of experiments")
     parser.add_argument(
         "--clean_up_activations",
         action="store_true",
