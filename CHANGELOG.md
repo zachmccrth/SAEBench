@@ -2,6 +2,19 @@
 
 
 
+## v0.3.2 (2025-01-14)
+
+### Fix
+
+* fix: use GPU for llm probing ([`ba0956e`](https://github.com/adamkarvonen/SAEBench/commit/ba0956e74ee541716823b5df98d91576b6af05a1))
+
+### Unknown
+
+* Don&#39;t hardcode the device for unlearning ([`a594ee6`](https://github.com/adamkarvonen/SAEBench/commit/a594ee6e8bc751f0f1502e5db5410992d6289793))
+
+* Update unlearning data path ([`443761d`](https://github.com/adamkarvonen/SAEBench/commit/443761dcac34aa50201f2edc2564c622ff861eaa))
+
+
 ## v0.3.1 (2025-01-14)
 
 ### Fix
