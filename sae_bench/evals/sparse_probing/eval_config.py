@@ -65,7 +65,7 @@ class SparseProbingEvalConfig(BaseEvalConfig):
     )
 
     k_values: list[int] = Field(
-        default_factory=lambda: [1, 2, 5, 10, 20, 50],
+        default_factory=lambda: [1, 2, 5],
         title="K Values",
         description="K represents the number of SAE features or residual stream channels we train the linear probe on. We iterate over all values of K.",
     )
