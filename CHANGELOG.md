@@ -2,6 +2,19 @@
 
 
 
+## v0.3.1 (2025-01-14)
+
+### Fix
+
+* fix: pass device into core evals ([`e6651ea`](https://github.com/adamkarvonen/SAEBench/commit/e6651ea60b87973cda31f3801dc2f34e196052bf))
+
+### Unknown
+
+* fold W_dec norm when loading SAE Lens SAEs ([`511d51a`](https://github.com/adamkarvonen/SAEBench/commit/511d51a5ef58997796a4769dff5a13f21f5e934b))
+
+* Change default sparse probing k values ([`271a9d4`](https://github.com/adamkarvonen/SAEBench/commit/271a9d4a61b35d4f4d11570ae01a70ec5c2b649d))
+
+
 ## v0.3.0 (2025-01-13)
 
 ### Feature
