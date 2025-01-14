@@ -971,9 +971,9 @@ def multiple_evals(
     output_folder: str = "eval_results",
     verbose: bool = False,
     dtype: str = "float32",
+    device: str = "cuda",
     force_rerun: bool = False,
 ) -> List[Dict[str, Any]]:
-    device = general_utils.setup_environment()
     assert len(selected_saes) > 0, "No SAEs to evaluate"
 
     eval_results = []
@@ -1132,6 +1132,7 @@ def multiple_evals(
 
 
 def run_evaluations(args: argparse.Namespace) -> List[Dict[str, Any]]:
+    device = general_utils.setup_environment()
     # Filter SAEs based on regex patterns
     filtered_saes = sae_selection_utils.get_saes_from_regex(
         args.sae_regex_pattern, args.sae_block_pattern
@@ -1162,6 +1163,7 @@ def run_evaluations(args: argparse.Namespace) -> List[Dict[str, Any]]:
         output_folder=args.output_folder,
         verbose=args.verbose,
         dtype=args.llm_dtype,
+        device=device,
         force_rerun=args.force_rerun,
     )
 

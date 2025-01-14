@@ -101,6 +101,7 @@ def run_evals(
                 output_folder="eval_results/core",
                 verbose=True,
                 dtype=llm_dtype,
+                device=device,
             )
         ),
         "scr": (
