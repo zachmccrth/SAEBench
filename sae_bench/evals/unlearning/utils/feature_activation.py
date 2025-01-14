@@ -72,10 +72,10 @@ def get_shuffled_forget_retain_tokens(
 
     forget_tokens = dataset_utils.tokenize_and_concat_dataset(
         model.tokenizer, shuffled_forget_dataset, seq_len=seq_len
-    ).to("cuda")
+    ).to(model.cfg.device)
     retain_tokens = dataset_utils.tokenize_and_concat_dataset(
         model.tokenizer, retain_dataset, seq_len=seq_len
-    ).to("cuda")
+    ).to(model.cfg.device)
 
     print(forget_tokens.shape, retain_tokens.shape)
     shuffled_forget_tokens = forget_tokens[torch.randperm(forget_tokens.shape[0])]

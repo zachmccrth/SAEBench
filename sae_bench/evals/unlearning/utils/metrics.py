@@ -211,7 +211,7 @@ def calculate_MCQ_metrics(
 
     n_predicted_answers = len(predicted_answers)
 
-    actual_answers = torch.tensor(actual_answers)[:n_predicted_answers].to("cuda")
+    actual_answers = torch.tensor(actual_answers)[:n_predicted_answers].to(model.cfg.device)
 
     predicted_prob_of_correct_answers = output_probs[
         torch.arange(len(actual_answers)), actual_answers
@@ -276,7 +276,7 @@ def get_output_probs_abcd(model, prompts, batch_size=2, n_batches=100, verbose=T
             # prepend_bos is False because the prompt already has a BOS token due to the instruct format
             token_batch = model.to_tokens(
                 prompt_batch, padding_side="right", prepend_bos=False
-            ).to("cuda")
+            ).to(model.cfg.device)
 
             assert (token_batch == model.tokenizer.bos_token_id).sum().item() == len(
                 token_batch
@@ -285,11 +285,11 @@ def get_output_probs_abcd(model, prompts, batch_size=2, n_batches=100, verbose=T
             token_lens = [
                 len(model.to_tokens(x, prepend_bos=False)[0]) for x in prompt_batch
             ]
-            next_token_indices = torch.tensor([x - 1 for x in token_lens]).to("cuda")
+            next_token_indices = torch.tensor([x - 1 for x in token_lens]).to(model.cfg.device)
 
             vals = model(token_batch, return_type="logits")
             vals = vals[
-                torch.arange(current_batch_size).to("cuda"), next_token_indices
+                torch.arange(current_batch_size).to(model.cfg.device), next_token_indices
             ].softmax(-1)
             # vals = torch.vstack([x[i] for x, i in zip(vals, next_token_indices)]).softmax(-1)
             # vals = vals[0, -1].softmax(-1)
@@ -382,7 +382,7 @@ def get_output_probs_abcd_hf(
     # answer_tokens = model.to_tokens(answer_strings, prepend_bos=False).flatten()
     answer_tokens = torch.tensor(
         [tokenizer(x)["input_ids"][1:] for x in answer_strings]
-    ).to("cuda")
+    ).to(model.cfg.device)
 
     with torch.no_grad():
         output_probs = []
@@ -391,11 +391,11 @@ def get_output_probs_abcd_hf(
             prompt_batch = prompts[i * batch_size : i * batch_size + batch_size]
             current_batch_size = len(prompt_batch)
             token_batch = [
-                torch.tensor(tokenizer(x)["input_ids"][istart:]).to("cuda")
+                torch.tensor(tokenizer(x)["input_ids"][istart:]).to(model.cfg.device)
                 for x in prompt_batch
             ]
             next_token_indices = torch.tensor([len(x) - 1 for x in token_batch]).to(
-                "cuda"
+                model.cfg.device
             )
             max_len = np.max([len(x) for x in token_batch])
             token_batch = [
@@ -403,7 +403,7 @@ def get_output_probs_abcd_hf(
                     (
                         x,
                         torch.full((max_len - len(x),), tokenizer.pad_token_id).to(
-                            "cuda"
+                            model.cfg.device
                         ),
                     )
                 )
