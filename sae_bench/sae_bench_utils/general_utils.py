@@ -108,6 +108,26 @@ def setup_environment():
     return device
 
 
+@torch.no_grad()
+def check_decoder_norms(W_dec: torch.Tensor) -> bool:
+    """
+    It's important to check that the decoder weights are normalized.
+    """
+    norms = torch.norm(W_dec, dim=1).to(dtype=W_dec.dtype, device=W_dec.device)
+
+    # In bfloat16, it's common to see errors of (1/256) in the norms
+    tolerance = 1e-2 if W_dec.dtype in [torch.bfloat16, torch.float16] else 1e-5
+
+    if torch.allclose(norms, torch.ones_like(norms), atol=tolerance):
+        return True
+    else:
+        max_diff = torch.max(torch.abs(norms - torch.ones_like(norms)))
+        print(f"Decoder weights are not normalized. Max diff: {max_diff.item()}")
+        raise ValueError(
+            "Decoder weights are not normalized. Refer to base_sae.py and relu_sae.py for more info."
+        )
+
+
 def load_and_format_sae(
     sae_release_or_unique_id: str, sae_object_or_sae_lens_id: str | SAE, device: str
 ) -> tuple[str, SAE, Optional[torch.Tensor]]:
@@ -119,10 +139,12 @@ def load_and_format_sae(
             device=device,
         )
         sae_id = sae_object_or_sae_lens_id
+        sae.fold_W_dec_norm()
     else:
         sae = sae_object_or_sae_lens_id
         sae_id = "custom_sae"
         sparsity = None
+        check_decoder_norms(sae.W_dec.data)
 
     return sae_id, sae, sparsity
 

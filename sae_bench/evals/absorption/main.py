@@ -69,7 +69,6 @@ def run_eval(
             sae_release, sae_object_or_id, device
         )
         sae = sae.to(device=device, dtype=llm_dtype)
-        sae.fold_W_dec_norm()
 
         sae_result_path = general_utils.get_results_filepath(
             output_path, sae_release, sae_id
