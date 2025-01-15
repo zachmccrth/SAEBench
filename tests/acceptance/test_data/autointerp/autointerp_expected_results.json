@@ -27,7 +27,8 @@
         "datetime_epoch_millis": 1731442596972,
         "eval_result_metrics": {
             "autointerp": {
-                "autointerp_score": 0.8442857142857144
+                "autointerp_score": 0.8442857142857144,
+                "autointerp_std_dev": 0.11821351945400238
             }
         },
         "eval_result_details": [],

@@ -30,6 +30,21 @@ class AbsorptionMeanMetrics(BaseMetrics):
         description="Average number of split features across all letters",
         json_schema_extra=DEFAULT_DISPLAY,
     )
+    std_dev_absorption_fraction_score: float = Field(
+        title="Standard Deviation of Absorption Fraction Score",
+        description="Standard deviation of the absorption fraction scores across all letters",
+        json_schema_extra=DEFAULT_DISPLAY,
+    )
+    std_dev_full_absorption_score: float = Field(
+        title="Standard Deviation of Full Absorption Score",
+        description="Standard deviation of the full absorption scores across all letters",
+        json_schema_extra=DEFAULT_DISPLAY,
+    )
+    std_dev_num_split_features: float = Field(
+        title="Standard Deviation of Number of Split Features",
+        description="Standard deviation of the number of split features across all letters",
+        json_schema_extra=DEFAULT_DISPLAY,
+    )
 
 
 # Define the categories themselves, and include a title and description for each.
@@ -45,7 +60,6 @@ class AbsorptionMetricCategories(BaseMetricCategories):
 # Define a result detail, which in this case is an absorption result for a single letter.
 @dataclass
 class AbsorptionResultDetail(BaseResultDetail):
-
     first_letter: str = Field(title="First Letter", description="")
 
     @field_validator("first_letter")
@@ -55,16 +69,10 @@ class AbsorptionResultDetail(BaseResultDetail):
             return value
         raise ValueError("First letter must be a single letter")
 
-    mean_absorption_fraction: float = Field(
-        title="Mean Absorption Fraction", description=""
-    )
-    full_absorption_rate: float = Field(
-        title="Rate of Full Absorption", description=""
-    )
+    mean_absorption_fraction: float = Field(title="Mean Absorption Fraction", description="")
+    full_absorption_rate: float = Field(title="Rate of Full Absorption", description="")
     num_full_absorption: int = Field(title="Num Full Absorption", description="")
-    num_probe_true_positives: int = Field(
-        title="Num Probe True Positives", description=""
-    )
+    num_probe_true_positives: int = Field(title="Num Probe True Positives", description="")
     num_split_features: int = Field(title="Num Split Features", description="")
 
 
@@ -72,9 +80,7 @@ class AbsorptionResultDetail(BaseResultDetail):
 # The title will end up being the title of the eval in the UI.
 @dataclass(config=ConfigDict(title="Absorption"))
 class AbsorptionEvalOutput(
-    BaseEvalOutput[
-        AbsorptionEvalConfig, AbsorptionMetricCategories, AbsorptionResultDetail
-    ]
+    BaseEvalOutput[AbsorptionEvalConfig, AbsorptionMetricCategories, AbsorptionResultDetail]
 ):
     # This will end up being the description of the eval in the UI.
     """

@@ -402,71 +402,65 @@ def get_scr_plotting_dict(
 def create_tpp_plotting_dict(
     class_accuracies: dict[str, dict[int, dict[str, float]]],
     llm_clean_accs: dict[str, float],
-) -> dict[str, float]:
-    """raw_results: dict[class_name][threshold][class_name] = float
-    llm_clean_accs: dict[class_name] = float
-    Returns: dict[metric_name] = float"""
-
-    results = {}
-    intended_diffs = {}
-    unintended_diffs = {}
-
+) -> tuple[dict[str, float], dict[str, dict[str, list[float]]]]:
+    """Calculates TPP metrics for each class and overall averages.
+    
+    Args:
+        class_accuracies: Nested dict mapping class_name -> threshold -> other_class -> accuracy
+        llm_clean_accs: Dict mapping class_name -> clean accuracy
+    
+    Returns:
+        Tuple containing:
+        - Dict mapping metric_name -> value for overall averages
+        - Dict mapping class_name -> metric_name -> value 
+    """
+    per_class_results = {}
+    overall_results = {}
     classes = list(llm_clean_accs.keys())
 
     for class_name in classes:
         if " probe on " in class_name:
             raise ValueError("This is SCR, shouldn't be here.")
-
+        
+        class_metrics = {}
         intended_clean_acc = llm_clean_accs[class_name]
 
+        # Calculate metrics for each threshold
         for threshold in class_accuracies[class_name]:
+            # Intended differences
             intended_patched_acc = class_accuracies[class_name][threshold][class_name]
-
             intended_diff = intended_clean_acc - intended_patched_acc
-
-            if threshold not in intended_diffs:
-                intended_diffs[threshold] = []
-
-            intended_diffs[threshold].append(intended_diff)
-
-        for intended_class_id in classes:
-            for unintended_class_id in classes:
-                if intended_class_id == unintended_class_id:
+            
+            # Unintended differences for this threshold
+            unintended_diffs = []
+            for unintended_class in classes:
+                if unintended_class == class_name:
                     continue
+                    
+                unintended_clean_acc = llm_clean_accs[unintended_class]
+                unintended_patched_acc = class_accuracies[class_name][threshold][unintended_class]
+                unintended_diff = unintended_clean_acc - unintended_patched_acc
+                unintended_diffs.append(unintended_diff)
+            
+            avg_unintended = sum(unintended_diffs) / len(unintended_diffs)
+            avg_diff = intended_diff - avg_unintended
+            
+            # Store with original key format
+            class_metrics[f"tpp_threshold_{threshold}_total_metric"] = avg_diff
+            class_metrics[f"tpp_threshold_{threshold}_intended_diff_only"] = intended_diff
+            class_metrics[f"tpp_threshold_{threshold}_unintended_diff_only"] = avg_unintended
+            
+        per_class_results[class_name] = class_metrics
 
-                unintended_clean_acc = llm_clean_accs[unintended_class_id]
+    # Calculate overall averages across classes
+    # First, determine all metric keys from the first class
+    metric_keys = next(iter(per_class_results.values())).keys()
+    
+    for metric_key in metric_keys:
+        values = [class_metrics[metric_key] for class_metrics in per_class_results.values()]
+        overall_results[metric_key] = sum(values) / len(values)
 
-                for threshold in class_accuracies[intended_class_id]:
-                    unintended_patched_acc = class_accuracies[intended_class_id][
-                        threshold
-                    ][unintended_class_id]
-                    unintended_diff = unintended_clean_acc - unintended_patched_acc
-
-                    if threshold not in unintended_diffs:
-                        unintended_diffs[threshold] = []
-
-                    unintended_diffs[threshold].append(unintended_diff)
-
-        for threshold in intended_diffs:
-            assert threshold in unintended_diffs
-
-            average_intended_diff = sum(intended_diffs[threshold]) / len(
-                intended_diffs[threshold]
-            )
-            average_unintended_diff = sum(unintended_diffs[threshold]) / len(
-                unintended_diffs[threshold]
-            )
-            average_diff = average_intended_diff - average_unintended_diff
-
-            results[f"tpp_threshold_{threshold}_total_metric"] = average_diff
-            results[f"tpp_threshold_{threshold}_intended_diff_only"] = (
-                average_intended_diff
-            )
-            results[f"tpp_threshold_{threshold}_unintended_diff_only"] = (
-                average_unintended_diff
-            )
-
-    return results
+    return overall_results, per_class_results
 
 
 def get_dataset_activations(
@@ -672,7 +666,7 @@ def run_eval_single_sae(
     device: str,
     artifacts_folder: str,
     save_activations: bool = True,
-) -> dict[str, float | dict[str, float]]:
+) -> tuple[dict[str, float | dict[str, float]], dict]:
     """hook_point: str is transformer lens format. example: f'blocks.{layer}.hook_resid_post'
     By default, we save activations for all datasets, and then reuse them for each sae.
     This is important to avoid recomputing activations for each SAE, and to ensure that the same activations are used for all SAEs.
@@ -684,6 +678,7 @@ def run_eval_single_sae(
     os.makedirs(artifacts_folder, exist_ok=True)
 
     dataset_results = {}
+    per_dataset_class_results = {}
 
     averaging_names = []
 
@@ -725,8 +720,9 @@ def run_eval_single_sae(
                 save_activations,
             )
 
-            processed_results = create_tpp_plotting_dict(raw_results, llm_clean_accs)
+            processed_results, per_class_results = create_tpp_plotting_dict(raw_results, llm_clean_accs)
             dataset_results[f"{run_name}_results"] = processed_results
+            per_dataset_class_results[dataset_name] = per_class_results
 
             averaging_names.append(run_name)
 
@@ -738,7 +734,7 @@ def run_eval_single_sae(
     if config.lower_vram_usage:
         model = model.to(device)
 
-    return results_dict
+    return results_dict, per_dataset_class_results
 
 
 def run_eval(
@@ -798,7 +794,7 @@ def run_eval(
             artifacts_base_folder, eval_type, config.model_name, sae.cfg.hook_name
         )
 
-        scr_or_tpp_results = run_eval_single_sae(
+        scr_or_tpp_results, per_dataset_class_results = run_eval_single_sae(
             config,
             sae,
             model,
@@ -858,6 +854,7 @@ def run_eval(
                     for dataset_name, result in scr_or_tpp_results.items()
                     if isinstance(result, dict)
                 ],
+                eval_result_unstructured=per_dataset_class_results,
                 sae_bench_commit_hash=sae_bench_commit_hash,
                 sae_lens_id=sae_id,
                 sae_lens_release_id=sae_release,

@@ -19,6 +19,10 @@ class AutoInterpMetrics(BaseMetrics):
         description="AutoInterp detection score, using methodology similar to Eleuther's 'Open Source Automated Interpretability for Sparse Autoencoder Features'",
         json_schema_extra=DEFAULT_DISPLAY,
     )
+    autointerp_std_dev: float = Field(
+        title="AutoInterp Standard Deviation",
+        description="AutoInterp detection score standard deviation over all tested features",
+    )
 
 
 # Define the categories themselves

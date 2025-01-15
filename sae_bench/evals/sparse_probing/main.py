@@ -35,10 +35,6 @@ from sae_bench.sae_bench_utils.sae_selection_utils import (
 )
 
 
-def average_test_accuracy(test_accuracies: dict[str, float]) -> float:
-    return sum(test_accuracies.values()) / len(test_accuracies)
-
-
 def get_dataset_activations(
     dataset_name: str,
     config: SparseProbingEvalConfig,
@@ -97,11 +93,11 @@ def run_eval_single_dataset(
     device: str,
     artifacts_folder: str,
     save_activations: bool,
-) -> dict[str, float]:
+) -> tuple[dict[str, float], dict]:
     """config: eval_config.EvalConfig contains all hyperparameters to reproduce the evaluation.
     It is saved in the results_dict for reproducibility."""
 
-    results_dict = {}
+    per_class_results_dict = {}
 
     activations_filename = f"{dataset_name}_activations.pt".replace("/", "_")
 
@@ -128,7 +124,6 @@ def run_eval_single_dataset(
 
         all_test_acts_BD = activation_collection.create_meaned_model_activations(all_test_acts_BLD)
 
-
         # We use GPU here as sklearn.fit is slow on large input dimensions, all other probe training is done with sklearn.fit
         llm_probes, llm_test_accuracies = probe_training.train_probe_on_activations(
             all_train_acts_BD,
@@ -140,9 +135,7 @@ def run_eval_single_dataset(
             lr=1e-2,
         )
 
-        llm_results = {"llm_test_accuracy": average_test_accuracy(llm_test_accuracies)}
-
-        llm_test_accuracy = average_test_accuracy(llm_test_accuracies)
+        llm_results = {"llm_test_accuracy": llm_test_accuracies}
 
         for k in config.k_values:
             llm_top_k_probes, llm_top_k_test_accuracies = probe_training.train_probe_on_activations(
@@ -150,9 +143,7 @@ def run_eval_single_dataset(
                 all_test_acts_BD,
                 select_top_k=k,
             )
-            llm_results[f"llm_top_{k}_test_accuracy"] = average_test_accuracy(
-                llm_top_k_test_accuracies
-            )
+            llm_results[f"llm_top_{k}_test_accuracy"] = llm_top_k_test_accuracies
 
         acts = {
             "train": all_train_acts_BLD,
@@ -194,9 +185,9 @@ def run_eval_single_dataset(
             epochs=100,
             lr=1e-2,
         )
-        results_dict["sae_test_accuracy"] = average_test_accuracy(sae_test_accuracies)
+        per_class_results_dict["sae_test_accuracy"] = sae_test_accuracies
     else:
-        results_dict["sae_test_accuracy"] = -1
+        per_class_results_dict["sae_test_accuracy"] = {"-1": -1}
 
         for key in all_sae_train_acts_BF.keys():
             all_sae_train_acts_BF[key] = all_sae_train_acts_BF[key].cpu()
@@ -206,7 +197,7 @@ def run_eval_single_dataset(
         gc.collect()
 
     for llm_result_key, llm_result_value in llm_results.items():
-        results_dict[llm_result_key] = llm_result_value
+        per_class_results_dict[llm_result_key] = llm_result_value
 
     for k in config.k_values:
         sae_top_k_probes, sae_top_k_test_accuracies = probe_training.train_probe_on_activations(
@@ -214,11 +205,14 @@ def run_eval_single_dataset(
             all_sae_test_acts_BF,
             select_top_k=k,
         )
-        results_dict[f"sae_top_{k}_test_accuracy"] = average_test_accuracy(
-            sae_top_k_test_accuracies
-        )
+        per_class_results_dict[f"sae_top_{k}_test_accuracy"] = sae_top_k_test_accuracies
 
-    return results_dict
+    results_dict = {}
+    for key, test_accuracies_dict in per_class_results_dict.items():
+        average_test_acc = sum(test_accuracies_dict.values()) / len(test_accuracies_dict)
+        results_dict[key] = average_test_acc
+
+    return results_dict, per_class_results_dict
 
 
 def run_eval_single_sae(
@@ -228,7 +222,7 @@ def run_eval_single_sae(
     device: str,
     artifacts_folder: str,
     save_activations: bool = True,
-) -> dict[str, float | dict[str, float]]:
+) -> tuple[dict[str, float | dict[str, float]], dict]:
     """hook_point: str is transformer lens format. example: f'blocks.{layer}.hook_resid_post'
     By default, we save activations for all datasets, and then reuse them for each sae.
     This is important to avoid recomputing activations for each SAE, and to ensure that the same activations are used for all SAEs.
@@ -241,17 +235,20 @@ def run_eval_single_sae(
     results_dict = {}
 
     dataset_results = {}
+    per_class_dict = {}
     for dataset_name in config.dataset_names:
-        dataset_results[f"{dataset_name}_results"] = run_eval_single_dataset(
-            dataset_name,
-            config,
-            sae,
-            model,
-            sae.cfg.hook_layer,
-            sae.cfg.hook_name,
-            device,
-            artifacts_folder,
-            save_activations,
+        dataset_results[f"{dataset_name}_results"], per_class_dict[f"{dataset_name}_results"] = (
+            run_eval_single_dataset(
+                dataset_name,
+                config,
+                sae,
+                model,
+                sae.cfg.hook_layer,
+                sae.cfg.hook_name,
+                device,
+                artifacts_folder,
+                save_activations,
+            )
         )
 
     results_dict = general_utils.average_results_dictionaries(dataset_results, config.dataset_names)
@@ -262,7 +259,7 @@ def run_eval_single_sae(
     if config.lower_vram_usage:
         model = model.to(device)
 
-    return results_dict
+    return results_dict, per_class_dict
 
 
 def run_eval(
@@ -317,7 +314,7 @@ def run_eval(
             sae.cfg.hook_name,
         )
 
-        sparse_probing_results = run_eval_single_sae(
+        sparse_probing_results, per_class_dict = run_eval_single_sae(
             config,
             sae,
             model,
@@ -353,6 +350,7 @@ def run_eval(
                 for dataset_name, result in sparse_probing_results.items()
                 if isinstance(result, dict)
             ],
+            eval_result_unstructured=per_class_dict,
             sae_bench_commit_hash=sae_bench_commit_hash,
             sae_lens_id=sae_id,
             sae_lens_release_id=sae_release,
