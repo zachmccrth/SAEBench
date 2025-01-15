@@ -128,10 +128,16 @@ def run_eval_single_dataset(
 
         all_test_acts_BD = activation_collection.create_meaned_model_activations(all_test_acts_BLD)
 
+
+        # We use GPU here as sklearn.fit is slow on large input dimensions, all other probe training is done with sklearn.fit
         llm_probes, llm_test_accuracies = probe_training.train_probe_on_activations(
             all_train_acts_BD,
             all_test_acts_BD,
             select_top_k=None,
+            use_sklearn=False,
+            batch_size=250,
+            epochs=100,
+            lr=1e-2,
         )
 
         llm_results = {"llm_test_accuracy": average_test_accuracy(llm_test_accuracies)}
@@ -139,15 +145,10 @@ def run_eval_single_dataset(
         llm_test_accuracy = average_test_accuracy(llm_test_accuracies)
 
         for k in config.k_values:
-            # We use GPU here as sklearn.fit is slow on large input dimensions, all other probe training is done with sklearn.fit
             llm_top_k_probes, llm_top_k_test_accuracies = probe_training.train_probe_on_activations(
                 all_train_acts_BD,
                 all_test_acts_BD,
                 select_top_k=k,
-                use_sklearn=False,
-                batch_size=250,
-                epochs=100,
-                lr=1e-2,
             )
             llm_results[f"llm_top_{k}_test_accuracy"] = average_test_accuracy(
                 llm_top_k_test_accuracies
