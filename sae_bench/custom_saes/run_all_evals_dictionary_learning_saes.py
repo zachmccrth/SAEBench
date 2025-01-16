@@ -53,7 +53,7 @@ output_folders = {
 
 
 TRAINER_LOADERS = {
-    "MatroyshkaBatchTopKTrainer": batch_topk_sae.load_dictionary_learning_matroyshka_batch_topk_sae,
+    "MatryoshkaBatchTopKTrainer": batch_topk_sae.load_dictionary_learning_matryoshka_batch_topk_sae,
     "BatchTopKTrainer": batch_topk_sae.load_dictionary_learning_batch_topk_sae,
     "TopKTrainer": topk_sae.load_dictionary_learning_topk_sae,
     "StandardTrainerAprilUpdate": relu_sae.load_dictionary_learning_relu_sae,

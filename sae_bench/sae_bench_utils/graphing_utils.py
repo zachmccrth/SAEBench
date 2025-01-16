@@ -24,7 +24,7 @@ TRAINER_MARKERS = {
     "topk": "^",
     "batch_topk": "s",
     "p_anneal": "*",
-    "matroyshka_batch_topk": "*",
+    "matryoshka_batch_topk": "*",
     "gated": "d",
 }
 
@@ -35,7 +35,7 @@ TRAINER_COLORS = {
     "topk": "green",
     "batch_topk": "purple",
     "p_anneal": "red",
-    "matroyshka_batch_topk": "brown",
+    "matryoshka_batch_topk": "brown",
     "gated": "purple",
 }
 
@@ -47,7 +47,7 @@ TRAINER_LABELS = {
     "topk": "TopK",
     "batch_topk": "Batch TopK",
     "p_anneal": "Standard with P-Annealing",
-    "matroyshka_batch_topk": "Matroyshka Batch TopK",
+    "matryoshka_batch_topk": "Matryoshka Batch TopK",
     "gated": "Gated",
 }
 
@@ -345,7 +345,7 @@ def get_d_sae_string(d_sae: int) -> str:
     if rounded_d_sae >= 1_000_000 and rounded_d_sae <= 1_060_000:
         return "1M"
     else:
-        return f"{rounded_d_sae//1000}k"
+        return f"{rounded_d_sae // 1000}k"
 
 
 def get_eval_results(eval_filenames: list[str]) -> dict[str, dict]:
