@@ -125,13 +125,10 @@ def get_stats_and_likely_false_negative_tokens(
     for letter in LETTERS:
         split_feats = metrics_df[metrics_df["letter"] == letter]["split_feats"].iloc(  # type: ignore
             0
-        )[
-            0
-        ]
+        )[0]
         k = len(split_feats)
         potential_false_negatives = raw_df[
-            (raw_df["answer_letter"] == letter)
-            & (raw_df[f"score_probe_{letter}"] > 0)
+            (raw_df["answer_letter"] == letter) & (raw_df[f"score_probe_{letter}"] > 0)
         ]["token"].tolist()
         num_split_feats_true_positives = raw_df[
             (raw_df["answer_letter"] == letter)

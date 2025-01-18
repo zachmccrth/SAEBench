@@ -11,12 +11,16 @@ def all_loadable_saes() -> list[tuple[str, str, float, float]]:
         for sae_name in lookup.saes_map.keys():
             expected_var_explained = lookup.expected_var_explained[sae_name]
             expected_l0 = lookup.expected_l0[sae_name]
-            all_loadable_saes.append((release, sae_name, expected_var_explained, expected_l0))
+            all_loadable_saes.append(
+                (release, sae_name, expected_var_explained, expected_l0)
+            )
 
     return all_loadable_saes
 
 
-def get_saes_from_regex(sae_regex_pattern: str, sae_id_pattern: str) -> list[tuple[str, str]]:
+def get_saes_from_regex(
+    sae_regex_pattern: str, sae_id_pattern: str
+) -> list[tuple[str, str]]:
     """
     Filter and retrieve SAEs based on regex patterns for release names and SAE IDs.
 
@@ -108,7 +112,9 @@ def select_saes_multiple_patterns(
     assert len(sae_regex_patterns) == len(sae_block_patterns), "Length mismatch"
 
     selected_saes = []
-    for sae_regex_pattern, sae_block_pattern in zip(sae_regex_patterns, sae_block_patterns):
+    for sae_regex_pattern, sae_block_pattern in zip(
+        sae_regex_patterns, sae_block_patterns
+    ):
         selected_saes.extend(get_saes_from_regex(sae_regex_pattern, sae_block_pattern))
     assert len(selected_saes) > 0, "No SAEs selected"
 

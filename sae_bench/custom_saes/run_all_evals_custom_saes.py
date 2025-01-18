@@ -181,8 +181,12 @@ def run_evals(
                 continue
             print("Skipping, need to clean up unlearning interface")
             continue  # TODO:
-            if not os.path.exists("./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"):
-                print("Skipping unlearning evaluation due to missing bio-forget-corpus.jsonl")
+            if not os.path.exists(
+                "./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"
+            ):
+                print(
+                    "Skipping unlearning evaluation due to missing bio-forget-corpus.jsonl"
+                )
                 continue
 
         print(f"\n\n\nRunning {eval_type} evaluation\n\n\n")
@@ -229,15 +233,21 @@ if __name__ == "__main__":
         api_key = None
 
     if "unlearning" in eval_types:
-        if not os.path.exists("./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"):
-            raise Exception("Please download bio-forget-corpus.jsonl for unlearning evaluation")
+        if not os.path.exists(
+            "./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"
+        ):
+            raise Exception(
+                "Please download bio-forget-corpus.jsonl for unlearning evaluation"
+            )
 
     # If evaluating multiple SAEs on the same layer, set save_activations to True
     # This will require at least 100GB of disk space
     save_activations = False
 
     for hook_layer in MODEL_CONFIGS[model_name]["layers"]:
-        sae = identity_sae.IdentitySAE(model_name, d_model, hook_layer, context_size=128)
+        sae = identity_sae.IdentitySAE(
+            model_name, d_model, hook_layer, context_size=128
+        )
         selected_saes = [(f"{model_name}_layer_{hook_layer}_identity_sae", sae)]
 
         # This will evaluate PCA SAEs

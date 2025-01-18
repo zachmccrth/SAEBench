@@ -37,7 +37,9 @@ def get_k_largest_indices(
                     seen_positions.add((row, col + offset))
             if len(unique_indices) == k:
                 break
-        rows, cols = torch.tensor(unique_indices, dtype=torch.int64, device=x.device).unbind(dim=-1)
+        rows, cols = torch.tensor(
+            unique_indices, dtype=torch.int64, device=x.device
+        ).unbind(dim=-1)
 
     return torch.stack((rows, cols), dim=1)[:k]
 

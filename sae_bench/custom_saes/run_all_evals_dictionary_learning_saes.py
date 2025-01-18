@@ -298,8 +298,12 @@ def run_evals(
             print("Skipping autointerp evaluation due to missing API key")
             continue
         if eval_type == "unlearning":
-            if not os.path.exists("./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"):
-                print("Skipping unlearning evaluation due to missing bio-forget-corpus.jsonl")
+            if not os.path.exists(
+                "./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"
+            ):
+                print(
+                    "Skipping unlearning evaluation due to missing bio-forget-corpus.jsonl"
+                )
                 continue
 
         print(f"\n\n\nRunning {eval_type} evaluation\n\n\n")
@@ -356,8 +360,12 @@ if __name__ == "__main__":
         api_key = None
 
     if "unlearning" in eval_types:
-        if not os.path.exists("./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"):
-            raise Exception("Please download bio-forget-corpus.jsonl for unlearning evaluation")
+        if not os.path.exists(
+            "./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"
+        ):
+            raise Exception(
+                "Please download bio-forget-corpus.jsonl for unlearning evaluation"
+            )
 
     repos = [
         (

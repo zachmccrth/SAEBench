@@ -105,6 +105,7 @@ class SparsityMetrics(BaseMetrics):
         description="Average sum of absolute feature activations",
     )
 
+
 @dataclass
 class MiscMetrics(BaseMetrics):
     freq_over_1_percent: float = Field(

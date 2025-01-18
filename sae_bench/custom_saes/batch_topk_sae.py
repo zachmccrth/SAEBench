@@ -27,18 +27,24 @@ class BatchTopKSAE(base_sae.BaseSAE):
 
         # BatchTopK requires a global threshold to use during inference. Must be positive.
         self.use_threshold = True
-        self.register_buffer("threshold", torch.tensor(-1.0, dtype=dtype, device=device))
+        self.register_buffer(
+            "threshold", torch.tensor(-1.0, dtype=dtype, device=device)
+        )
 
     def encode(self, x: torch.Tensor):
         """Note: x can be either shape (B, F) or (B, L, F)"""
-        post_relu_feat_acts_BF = nn.functional.relu((x - self.b_dec) @ self.W_enc + self.b_enc)
+        post_relu_feat_acts_BF = nn.functional.relu(
+            (x - self.b_dec) @ self.W_enc + self.b_enc
+        )
 
         if self.use_threshold:
             if self.threshold < 0:
                 raise ValueError(
                     "Threshold is not set. The threshold must be set to use it during inference"
                 )
-            encoded_acts_BF = post_relu_feat_acts_BF * (post_relu_feat_acts_BF > self.threshold)
+            encoded_acts_BF = post_relu_feat_acts_BF * (
+                post_relu_feat_acts_BF > self.threshold
+            )
             return encoded_acts_BF
 
         post_topk = post_relu_feat_acts_BF.topk(self.k, sorted=False, dim=-1)
@@ -47,7 +53,9 @@ class BatchTopKSAE(base_sae.BaseSAE):
         top_indices_BK = post_topk.indices
 
         buffer_BF = torch.zeros_like(post_relu_feat_acts_BF)
-        encoded_acts_BF = buffer_BF.scatter_(dim=-1, index=top_indices_BK, src=tops_acts_BK)
+        encoded_acts_BF = buffer_BF.scatter_(
+            dim=-1, index=top_indices_BK, src=tops_acts_BK
+        )
         return encoded_acts_BF
 
     def decode(self, feature_acts: torch.Tensor):

@@ -127,7 +127,7 @@ def calculate_MCQ_metrics(
     if target_metric is not None:
         model_name = model.cfg.model_name
         full_dataset_name = (
-            f'mmlu-{dataset_name.replace("_", "-")}'
+            f"mmlu-{dataset_name.replace('_', '-')}"
             if dataset_name != "wmdp-bio"
             else dataset_name
         )
@@ -211,7 +211,9 @@ def calculate_MCQ_metrics(
 
     n_predicted_answers = len(predicted_answers)
 
-    actual_answers = torch.tensor(actual_answers)[:n_predicted_answers].to(model.cfg.device)
+    actual_answers = torch.tensor(actual_answers)[:n_predicted_answers].to(
+        model.cfg.device
+    )
 
     predicted_prob_of_correct_answers = output_probs[
         torch.arange(len(actual_answers)), actual_answers
@@ -285,11 +287,14 @@ def get_output_probs_abcd(model, prompts, batch_size=2, n_batches=100, verbose=T
             token_lens = [
                 len(model.to_tokens(x, prepend_bos=False)[0]) for x in prompt_batch
             ]
-            next_token_indices = torch.tensor([x - 1 for x in token_lens]).to(model.cfg.device)
+            next_token_indices = torch.tensor([x - 1 for x in token_lens]).to(
+                model.cfg.device
+            )
 
             vals = model(token_batch, return_type="logits")
             vals = vals[
-                torch.arange(current_batch_size).to(model.cfg.device), next_token_indices
+                torch.arange(current_batch_size).to(model.cfg.device),
+                next_token_indices,
             ].softmax(-1)
             # vals = torch.vstack([x[i] for x, i in zip(vals, next_token_indices)]).softmax(-1)
             # vals = vals[0, -1].softmax(-1)
@@ -537,7 +542,7 @@ def get_baseline_metrics(
     model.reset_hooks()
 
     full_dataset_name = (
-        f'mmlu-{dataset_name.replace("_", "-")}'
+        f"mmlu-{dataset_name.replace('_', '-')}"
         if dataset_name != "wmdp-bio"
         else dataset_name
     )
@@ -817,7 +822,7 @@ def save_target_question_ids(
     """
 
     full_dataset_name = (
-        f'mmlu-{dataset_name.replace("_", "-")}'
+        f"mmlu-{dataset_name.replace('_', '-')}"
         if dataset_name != "wmdp-bio"
         else dataset_name
     )

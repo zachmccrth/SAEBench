@@ -69,10 +69,14 @@ class AbsorptionResultDetail(BaseResultDetail):
             return value
         raise ValueError("First letter must be a single letter")
 
-    mean_absorption_fraction: float = Field(title="Mean Absorption Fraction", description="")
+    mean_absorption_fraction: float = Field(
+        title="Mean Absorption Fraction", description=""
+    )
     full_absorption_rate: float = Field(title="Rate of Full Absorption", description="")
     num_full_absorption: int = Field(title="Num Full Absorption", description="")
-    num_probe_true_positives: int = Field(title="Num Probe True Positives", description="")
+    num_probe_true_positives: int = Field(
+        title="Num Probe True Positives", description=""
+    )
     num_split_features: int = Field(title="Num Split Features", description="")
 
 
@@ -80,7 +84,9 @@ class AbsorptionResultDetail(BaseResultDetail):
 # The title will end up being the title of the eval in the UI.
 @dataclass(config=ConfigDict(title="Absorption"))
 class AbsorptionEvalOutput(
-    BaseEvalOutput[AbsorptionEvalConfig, AbsorptionMetricCategories, AbsorptionResultDetail]
+    BaseEvalOutput[
+        AbsorptionEvalConfig, AbsorptionMetricCategories, AbsorptionResultDetail
+    ]
 ):
     # This will end up being the description of the eval in the UI.
     """

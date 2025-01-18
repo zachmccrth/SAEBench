@@ -11,7 +11,9 @@ with open("openai_api_key.txt") as f:
 device = torch.device(
     "mps"
     if torch.backends.mps.is_available()
-    else "cuda" if torch.cuda.is_available() else "cpu"
+    else "cuda"
+    if torch.cuda.is_available()
+    else "cpu"
 )
 
 selected_saes = [("gpt2-small-res-jb", "blocks.7.hook_resid_pre")]

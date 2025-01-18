@@ -68,7 +68,9 @@ class BaseMetricCategories:
         return data
 
 
-BaseMetricCategoriesType = TypeVar("BaseMetricCategoriesType", bound=BaseMetricCategories)
+BaseMetricCategoriesType = TypeVar(
+    "BaseMetricCategoriesType", bound=BaseMetricCategories
+)
 
 
 @dataclass
@@ -80,7 +82,9 @@ BaseResultDetailType = TypeVar("BaseResultDetailType", bound=BaseResultDetail)
 
 
 @dataclass
-class BaseEvalOutput(Generic[BaseEvalConfigType, BaseMetricCategoriesType, BaseResultDetailType]):
+class BaseEvalOutput(
+    Generic[BaseEvalConfigType, BaseMetricCategoriesType, BaseResultDetailType]
+):
     def to_json(self, indent: int = 2) -> str:
         """
         Dump the BaseEvalOutput object to a JSON string.

@@ -30,7 +30,9 @@ def anthropic_clamp_resid_SAE_features(
             # adjust feature activations with scaling (multiplier = 0 just ablates the feature)
             feature_activations = sae.encode(resid)
 
-            feature_activations[:, 0, :] = 0.0  # We zero out the BOS token for all SAEs.
+            feature_activations[:, 0, :] = (
+                0.0  # We zero out the BOS token for all SAEs.
+            )
             # We don't need to zero out padding tokens because we right pad, so they don't effect the model generation.
 
             reconstruction = sae.decode(feature_activations)

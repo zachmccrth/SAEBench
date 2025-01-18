@@ -102,26 +102,26 @@ def validate_eval_cli_interface(
         missing_config_args = config_fields - eval_specific_args
         extra_cli_args = eval_specific_args - config_fields
 
-        assert (
-            not missing_config_args
-        ), f"Config fields missing from CLI args: {missing_config_args}"
+        assert not missing_config_args, (
+            f"Config fields missing from CLI args: {missing_config_args}"
+        )
         assert not extra_cli_args, f"CLI args not present in config: {extra_cli_args}"
 
-        assert (
-            not missing_config_args
-        ), f"Config fields missing from CLI args: {missing_config_args}"
+        assert not missing_config_args, (
+            f"Config fields missing from CLI args: {missing_config_args}"
+        )
         assert not extra_cli_args, f"CLI args not present in config: {extra_cli_args}"
 
     # Verify help text exists for all arguments
     for action in parser._actions:
         if action.dest != "help":
-            assert (
-                action.help is not None and action.help != ""
-            ), f"Missing help text for argument: {action.dest}"
+            assert action.help is not None and action.help != "", (
+                f"Missing help text for argument: {action.dest}"
+            )
         if action.dest != "help":
-            assert (
-                action.help is not None and action.help != ""
-            ), f"Missing help text for argument: {action.dest}"
+            assert action.help is not None and action.help != "", (
+                f"Missing help text for argument: {action.dest}"
+            )
 
 
 def compare_dicts_within_tolerance(
@@ -150,9 +150,9 @@ def compare_dicts_within_tolerance(
     if all_diffs is None:
         all_diffs = []
 
-    assert isinstance(
-        actual, type(expected)
-    ), f"Type mismatch at {path}: {type(actual)} != {type(expected)}"
+    assert isinstance(actual, type(expected)), (
+        f"Type mismatch at {path}: {type(actual)} != {type(expected)}"
+    )
 
     if not isinstance(actual, dict) and keys_to_compare is not None:
         if path.split(".")[-1] not in keys_to_compare:
@@ -199,9 +199,9 @@ def compare_dicts_within_tolerance(
             print(f"Global mean difference: {mean_diff}")
             print(f"Global max difference: {max_diff}")
 
-            assert (
-                max_diff <= tolerance
-            ), f"Value mismatch at {path}: {actual} not within {tolerance} of {expected}"
+            assert max_diff <= tolerance, (
+                f"Value mismatch at {path}: {actual} not within {tolerance} of {expected}"
+            )
 
         else:
             print("No numeric differences found.")

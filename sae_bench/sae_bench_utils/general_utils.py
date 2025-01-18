@@ -158,7 +158,9 @@ def get_results_filepath(output_path: str, sae_release: str, sae_id: str) -> str
 
 
 def find_gemmascope_average_l0_sae_names(
-    layer_num: int, gemmascope_release_name: str = "gemma-scope-2b-pt-res", width_num: str = "16k"
+    layer_num: int,
+    gemmascope_release_name: str = "gemma-scope-2b-pt-res",
+    width_num: str = "16k",
 ) -> list[str]:
     df = pd.DataFrame.from_records(
         {k: v.__dict__ for k, v in get_pretrained_saes_directory().items()}
@@ -244,7 +246,9 @@ def retry_with_exponential_backoff(
                         raise
 
                     # Calculate delay with optional jitter
-                    current_delay = min(delay * (exponential_base**retry_count), max_delay)
+                    current_delay = min(
+                        delay * (exponential_base**retry_count), max_delay
+                    )
                     if jitter:
                         current_delay *= 1 + random.random() * 0.1  # 10% jitter
 

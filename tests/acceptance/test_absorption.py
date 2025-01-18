@@ -65,22 +65,31 @@ def test_end_to_end_different_seed():
 
     # Find the correct key in the new structure
     actual_result_key = f"{TEST_RELEASE}_{TEST_SAE_NAME}"
-    actual_mean_absorption_fraction_rate = run_results[actual_result_key]["eval_result_metrics"]["mean"][
-        "mean_absorption_fraction_score"
-    ]
-    actual_mean_full_absorption_rate = run_results[actual_result_key]["eval_result_metrics"]["mean"][
-        "mean_full_absorption_score"
-    ]
+    actual_mean_absorption_fraction_rate = run_results[actual_result_key][
+        "eval_result_metrics"
+    ]["mean"]["mean_absorption_fraction_score"]
+    actual_mean_full_absorption_rate = run_results[actual_result_key][
+        "eval_result_metrics"
+    ]["mean"]["mean_full_absorption_score"]
 
     # Load expected results and compare
     with open(expected_results_filename, "r") as f:
         expected_results = json.load(f)
 
-    expected_mean_absorption_fraction_rate = expected_results["eval_result_metrics"]["mean"][
-        "mean_absorption_fraction_score"
-    ]
-    expected_mean_full_absorption_rate = expected_results["eval_result_metrics"]["mean"][
-        "mean_full_absorption_score"
-    ]
-    assert abs(actual_mean_full_absorption_rate - expected_mean_full_absorption_rate) < TEST_TOLERANCE
-    assert abs(actual_mean_absorption_fraction_rate - expected_mean_absorption_fraction_rate) < TEST_TOLERANCE
+    expected_mean_absorption_fraction_rate = expected_results["eval_result_metrics"][
+        "mean"
+    ]["mean_absorption_fraction_score"]
+    expected_mean_full_absorption_rate = expected_results["eval_result_metrics"][
+        "mean"
+    ]["mean_full_absorption_score"]
+    assert (
+        abs(actual_mean_full_absorption_rate - expected_mean_full_absorption_rate)
+        < TEST_TOLERANCE
+    )
+    assert (
+        abs(
+            actual_mean_absorption_fraction_rate
+            - expected_mean_absorption_fraction_rate
+        )
+        < TEST_TOLERANCE
+    )

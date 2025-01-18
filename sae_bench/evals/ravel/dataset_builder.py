@@ -395,7 +395,6 @@ class RAVELEntityPromptData:
         max_new_tokens: Optional[int] = None,
         **kwargs,
     ):
-
         all_prompts = list(self.prompts.values())
         completions = generate_batched(
             model,

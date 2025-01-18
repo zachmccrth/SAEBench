@@ -162,9 +162,9 @@ def get_all_node_effects_for_one_sae(
 def select_top_n_features(
     effects: torch.Tensor, n: int, class_name: str
 ) -> torch.Tensor:
-    assert (
-        n <= effects.numel()
-    ), f"n ({n}) must not be larger than the number of features ({effects.numel()}) for ablation class {class_name}"
+    assert n <= effects.numel(), (
+        f"n ({n}) must not be larger than the number of features ({effects.numel()}) for ablation class {class_name}"
+    )
 
     # Find non-zero effects
     non_zero_mask = effects != 0
@@ -404,15 +404,15 @@ def create_tpp_plotting_dict(
     llm_clean_accs: dict[str, float],
 ) -> tuple[dict[str, float], dict[str, dict[str, list[float]]]]:
     """Calculates TPP metrics for each class and overall averages.
-    
+
     Args:
         class_accuracies: Nested dict mapping class_name -> threshold -> other_class -> accuracy
         llm_clean_accs: Dict mapping class_name -> clean accuracy
-    
+
     Returns:
         Tuple containing:
         - Dict mapping metric_name -> value for overall averages
-        - Dict mapping class_name -> metric_name -> value 
+        - Dict mapping class_name -> metric_name -> value
     """
     per_class_results = {}
     overall_results = {}
@@ -421,7 +421,7 @@ def create_tpp_plotting_dict(
     for class_name in classes:
         if " probe on " in class_name:
             raise ValueError("This is SCR, shouldn't be here.")
-        
+
         class_metrics = {}
         intended_clean_acc = llm_clean_accs[class_name]
 
@@ -430,34 +430,42 @@ def create_tpp_plotting_dict(
             # Intended differences
             intended_patched_acc = class_accuracies[class_name][threshold][class_name]
             intended_diff = intended_clean_acc - intended_patched_acc
-            
+
             # Unintended differences for this threshold
             unintended_diffs = []
             for unintended_class in classes:
                 if unintended_class == class_name:
                     continue
-                    
+
                 unintended_clean_acc = llm_clean_accs[unintended_class]
-                unintended_patched_acc = class_accuracies[class_name][threshold][unintended_class]
+                unintended_patched_acc = class_accuracies[class_name][threshold][
+                    unintended_class
+                ]
                 unintended_diff = unintended_clean_acc - unintended_patched_acc
                 unintended_diffs.append(unintended_diff)
-            
+
             avg_unintended = sum(unintended_diffs) / len(unintended_diffs)
             avg_diff = intended_diff - avg_unintended
-            
+
             # Store with original key format
             class_metrics[f"tpp_threshold_{threshold}_total_metric"] = avg_diff
-            class_metrics[f"tpp_threshold_{threshold}_intended_diff_only"] = intended_diff
-            class_metrics[f"tpp_threshold_{threshold}_unintended_diff_only"] = avg_unintended
-            
+            class_metrics[f"tpp_threshold_{threshold}_intended_diff_only"] = (
+                intended_diff
+            )
+            class_metrics[f"tpp_threshold_{threshold}_unintended_diff_only"] = (
+                avg_unintended
+            )
+
         per_class_results[class_name] = class_metrics
 
     # Calculate overall averages across classes
     # First, determine all metric keys from the first class
     metric_keys = next(iter(per_class_results.values())).keys()
-    
+
     for metric_key in metric_keys:
-        values = [class_metrics[metric_key] for class_metrics in per_class_results.values()]
+        values = [
+            class_metrics[metric_key] for class_metrics in per_class_results.values()
+        ]
         overall_results[metric_key] = sum(values) / len(values)
 
     return overall_results, per_class_results
@@ -720,7 +728,9 @@ def run_eval_single_sae(
                 save_activations,
             )
 
-            processed_results, per_class_results = create_tpp_plotting_dict(raw_results, llm_clean_accs)
+            processed_results, per_class_results = create_tpp_plotting_dict(
+                raw_results, llm_clean_accs
+            )
             dataset_results[f"{run_name}_results"] = processed_results
             per_dataset_class_results[dataset_name] = per_class_results
 
