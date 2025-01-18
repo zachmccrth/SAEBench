@@ -1,6 +1,7 @@
 from collections import defaultdict
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -13,8 +14,8 @@ from tqdm.autonotebook import tqdm
 from transformer_lens import HookedTransformer
 
 from sae_bench.evals.absorption.common import (
-    RESULTS_DIR,
     PROBES_DIR,
+    RESULTS_DIR,
     get_or_make_dir,
     load_df_or_run,
     load_dfs_or_run,

@@ -1,15 +1,17 @@
 import os
+
 import numpy as np
 import torch
-from transformer_lens import HookedTransformer
 from sae_lens import SAE
+from transformer_lens import HookedTransformer
+
+from sae_bench.evals.unlearning.eval_config import UnlearningEvalConfig
 from sae_bench.evals.unlearning.utils.feature_activation import (
     get_top_features,
     load_sparsity_data,
     save_feature_sparsity,
 )
 from sae_bench.evals.unlearning.utils.metrics import calculate_metrics_list
-from sae_bench.evals.unlearning.eval_config import UnlearningEvalConfig
 
 
 def run_metrics_calculation(
@@ -65,7 +67,7 @@ def run_metrics_calculation(
             retain_threshold=retain_threshold,
         )
 
-    return metrics_lst
+    return metrics_lst  # type: ignore
 
 
 def run_eval_single_sae(

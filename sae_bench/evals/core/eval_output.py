@@ -1,13 +1,14 @@
-from pydantic.dataclasses import dataclass
 from pydantic import ConfigDict, Field
-from sae_bench.evals.core.eval_config import CoreEvalConfig
+from pydantic.dataclasses import dataclass
+
 from sae_bench.evals.base_eval_output import (
+    DEFAULT_DISPLAY,
     BaseEvalOutput,
     BaseMetricCategories,
     BaseMetrics,
     BaseResultDetail,
-    DEFAULT_DISPLAY,
 )
+from sae_bench.evals.core.eval_config import CoreEvalConfig
 
 EVAL_TYPE_ID_CORE = "core"
 
@@ -110,19 +111,19 @@ class SparsityMetrics(BaseMetrics):
 class MiscMetrics(BaseMetrics):
     freq_over_1_percent: float = Field(
         title="Activation Frequency Over 1%",
-        description=f"Proportion of tokens that activate each feature more than 1% of the time",
+        description="Proportion of tokens that activate each feature more than 1% of the time",
     )
     freq_over_10_percent: float = Field(
         title="Activation Frequency Over 10%",
-        description=f"Proportion of tokens that activate each feature more than 10% of the time",
+        description="Proportion of tokens that activate each feature more than 10% of the time",
     )
     normalized_freq_over_1_percent: float = Field(
         title="Normalized Activation Frequency Over 1%",
-        description=f"Sum of > 1% activation frequency probabilities, normalized by the sum of all feature probabilities",
+        description="Sum of > 1% activation frequency probabilities, normalized by the sum of all feature probabilities",
     )
     normalized_freq_over_10_percent: float = Field(
         title="Normalized Activation Frequency Over 10%",
-        description=f"Sum of > 10% activation frequency probabilities, normalized by the sum of all feature probabilities",
+        description="Sum of > 10% activation frequency probabilities, normalized by the sum of all feature probabilities",
     )
     average_max_encoder_cosine_sim: float = Field(
         title="Average Max Encoder Cosine Similarity",

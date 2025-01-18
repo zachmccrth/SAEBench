@@ -1,13 +1,14 @@
-import pandas as pd
-import re
-import os
-import torch
-from typing import Optional, Callable, Any, Union, Type
-import time
 import functools
+import os
 import random
-from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
+import re
+import time
+from typing import Any, Callable
+
+import pandas as pd
+import torch
 from sae_lens import SAE
+from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 
 
 def str_to_dtype(dtype_str: str) -> torch.dtype:
@@ -130,7 +131,7 @@ def check_decoder_norms(W_dec: torch.Tensor) -> bool:
 
 def load_and_format_sae(
     sae_release_or_unique_id: str, sae_object_or_sae_lens_id: str | SAE, device: str
-) -> tuple[str, SAE, Optional[torch.Tensor]]:
+) -> tuple[str, SAE, torch.Tensor | None] | None:
     """Handle both pretrained SAEs (identified by string) and custom SAEs (passed as objects)"""
     if isinstance(sae_object_or_sae_lens_id, str):
         sae, _, sparsity = SAE.from_pretrained(
@@ -216,7 +217,7 @@ def retry_with_exponential_backoff(
     max_delay: float = 60.0,
     exponential_base: float = 2.0,
     jitter: bool = True,
-    exceptions: Union[Type[Exception], tuple[Type[Exception], ...]] = Exception,
+    exceptions: type[Exception] | tuple[type[Exception], ...] = Exception,
 ) -> Callable:
     """
     Decorator for retrying a function with exponential backoff.

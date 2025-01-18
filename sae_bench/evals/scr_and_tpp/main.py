@@ -1,44 +1,42 @@
+import argparse
 import gc
 import os
-import shutil
+import pickle
 import random
+import shutil
 import time
 from dataclasses import asdict
-from typing import Optional
+from datetime import datetime
 
 import einops
-from pydantic import TypeAdapter
 import torch
 from sae_lens import SAE
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
-import argparse
-from datetime import datetime
-import pickle
 
 import sae_bench.evals.scr_and_tpp.dataset_creation as dataset_creation
+import sae_bench.evals.sparse_probing.probe_training as probe_training
+import sae_bench.sae_bench_utils.activation_collection as activation_collection
+import sae_bench.sae_bench_utils.dataset_info as dataset_info
+import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
+import sae_bench.sae_bench_utils.general_utils as general_utils
 from sae_bench.evals.scr_and_tpp.eval_config import ScrAndTppEvalConfig
 from sae_bench.evals.scr_and_tpp.eval_output import (
     EVAL_TYPE_ID_SCR,
     EVAL_TYPE_ID_TPP,
     ScrEvalOutput,
     ScrMetricCategories,
-    ScrResultDetail,
     ScrMetrics,
+    ScrResultDetail,
     TppEvalOutput,
     TppMetricCategories,
-    TppResultDetail,
     TppMetrics,
+    TppResultDetail,
 )
-import sae_bench.evals.sparse_probing.probe_training as probe_training
-import sae_bench.sae_bench_utils.activation_collection as activation_collection
-import sae_bench.sae_bench_utils.dataset_info as dataset_info
-import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
-import sae_bench.sae_bench_utils.general_utils as general_utils
 from sae_bench.sae_bench_utils import (
     get_eval_uuid,
-    get_sae_lens_version,
     get_sae_bench_version,
+    get_sae_lens_version,
 )
 from sae_bench.sae_bench_utils.sae_selection_utils import get_saes_from_regex
 
@@ -480,8 +478,8 @@ def get_dataset_activations(
     hook_point: str,
     device: str,
     chosen_classes: list[str],
-    column1_vals: Optional[tuple[str, str]] = None,
-    column2_vals: Optional[tuple[str, str]] = None,
+    column1_vals: tuple[str, str] | None = None,
+    column2_vals: tuple[str, str] | None = None,
 ) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
     train_data, test_data = dataset_creation.get_train_test_data(
         dataset_name,
@@ -498,10 +496,16 @@ def get_dataset_activations(
         test_data = dataset_utils.filter_dataset(test_data, chosen_classes)
 
     train_data = dataset_utils.tokenize_data_dictionary(
-        train_data, model.tokenizer, config.context_length, device
+        train_data,
+        model.tokenizer,  # type: ignore
+        config.context_length,
+        device,
     )
     test_data = dataset_utils.tokenize_data_dictionary(
-        test_data, model.tokenizer, config.context_length, device
+        test_data,
+        model.tokenizer,  # type: ignore
+        config.context_length,
+        device,
     )
 
     all_train_acts_BLD = activation_collection.get_all_llm_activations(
@@ -534,7 +538,7 @@ def run_eval_single_dataset(
     device: str,
     artifacts_folder: str,
     save_activations: bool = True,
-    column1_vals: Optional[tuple[str, str]] = None,
+    column1_vals: tuple[str, str] | None = None,
 ) -> tuple[dict[str, dict[str, dict[int, dict[str, float]]]], dict[str, float]]:
     """Return dict is of the form:
     dict[ablated_class_name][threshold][measured_acc_class_name] = float
@@ -550,11 +554,11 @@ def run_eval_single_dataset(
         probes_filename = f"{dataset_name}_probes.pkl".replace("/", "_")
     else:
         chosen_classes = list(dataset_info.PAIRED_CLASS_KEYS.keys())
-        activations_filename = f"{dataset_name}_{column1_vals[0]}_{column1_vals[1]}_activations.pt".replace(
+        activations_filename = f"{dataset_name}_{column1_vals[0]}_{column1_vals[1]}_activations.pt".replace(  # type: ignore
             "/", "_"
         )
         probes_filename = (
-            f"{dataset_name}_{column1_vals[0]}_{column1_vals[1]}_probes.pkl".replace(
+            f"{dataset_name}_{column1_vals[0]}_{column1_vals[1]}_probes.pkl".replace(  # type: ignore
                 "/", "_"
             )
         )
@@ -564,7 +568,7 @@ def run_eval_single_dataset(
 
     if not os.path.exists(activations_path):
         if config.lower_vram_usage:
-            model = model.to(device)
+            model = model.to(device)  # type: ignore
         all_train_acts_BLD, all_test_acts_BLD = get_dataset_activations(
             dataset_name,
             config,
@@ -578,7 +582,7 @@ def run_eval_single_dataset(
             column2_vals,
         )
         if config.lower_vram_usage:
-            model = model.to("cpu")
+            model = model.to("cpu")  # type: ignore
 
         all_meaned_train_acts_BD = (
             activation_collection.create_meaned_model_activations(all_train_acts_BLD)
@@ -605,7 +609,7 @@ def run_eval_single_dataset(
         torch.set_grad_enabled(False)
 
         llm_test_accuracies = get_probe_test_accuracy(
-            llm_probes,
+            llm_probes,  # type: ignore
             chosen_classes,
             all_meaned_test_acts_BD,
             config.probe_test_batch_size,
@@ -628,7 +632,7 @@ def run_eval_single_dataset(
                 pickle.dump(llm_probes_dict, f)
     else:
         if config.lower_vram_usage:
-            model = model.to("cpu")
+            model = model.to("cpu")  # type: ignore
         print(f"Loading activations from {activations_path}")
         acts = torch.load(activations_path)
         all_train_acts_BLD = acts["train"]
@@ -645,7 +649,7 @@ def run_eval_single_dataset(
 
     sae_node_effects = get_all_node_effects_for_one_sae(
         sae,
-        llm_probes,
+        llm_probes,  # type: ignore
         chosen_classes,
         config.perform_scr,
         all_train_acts_BLD,
@@ -653,7 +657,7 @@ def run_eval_single_dataset(
     )
 
     ablated_class_accuracies = perform_feature_ablations(
-        llm_probes,
+        llm_probes,  # type: ignore
         sae,
         config.sae_batch_size,
         all_test_acts_BLD,
@@ -664,7 +668,7 @@ def run_eval_single_dataset(
         config.perform_scr,
     )
 
-    return ablated_class_accuracies, llm_test_accuracies
+    return ablated_class_accuracies, llm_test_accuracies  # type: ignore
 
 
 def run_eval_single_sae(
@@ -708,7 +712,7 @@ def run_eval_single_sae(
                     column1_vals,
                 )
 
-                processed_results = get_scr_plotting_dict(raw_results, llm_clean_accs)
+                processed_results = get_scr_plotting_dict(raw_results, llm_clean_accs)  # type: ignore
 
                 dataset_results[f"{run_name}_results"] = processed_results
 
@@ -729,7 +733,8 @@ def run_eval_single_sae(
             )
 
             processed_results, per_class_results = create_tpp_plotting_dict(
-                raw_results, llm_clean_accs
+                raw_results,  # type: ignore
+                llm_clean_accs,
             )
             dataset_results[f"{run_name}_results"] = processed_results
             per_dataset_class_results[dataset_name] = per_class_results
@@ -742,9 +747,9 @@ def run_eval_single_sae(
     results_dict.update(dataset_results)
 
     if config.lower_vram_usage:
-        model = model.to(device)
+        model = model.to(device)  # type: ignore
 
-    return results_dict, per_dataset_class_results
+    return results_dict, per_dataset_class_results  # type: ignore
 
 
 def run_eval(
@@ -789,7 +794,7 @@ def run_eval(
     ):
         sae_id, sae, sparsity = general_utils.load_and_format_sae(
             sae_release, sae_object_or_id, device
-        )
+        )  # type: ignore
         sae = sae.to(device=device, dtype=llm_dtype)
 
         sae_result_path = general_utils.get_results_filepath(

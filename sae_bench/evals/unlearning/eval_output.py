@@ -1,13 +1,14 @@
-from pydantic.dataclasses import dataclass
 from pydantic import ConfigDict, Field
-from sae_bench.evals.unlearning.eval_config import UnlearningEvalConfig
+from pydantic.dataclasses import dataclass
+
 from sae_bench.evals.base_eval_output import (
+    DEFAULT_DISPLAY,
     BaseEvalOutput,
     BaseMetricCategories,
     BaseMetrics,
-    DEFAULT_DISPLAY,
     BaseResultDetail,
 )
+from sae_bench.evals.unlearning.eval_config import UnlearningEvalConfig
 
 EVAL_TYPE_ID_UNLEARNING = "unlearning"
 

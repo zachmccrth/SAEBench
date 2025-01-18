@@ -1,9 +1,10 @@
-from dataclasses import asdict
 import json
+from dataclasses import asdict
 from typing import Any, Generic, TypeVar
-from pydantic.dataclasses import dataclass
+
 from pydantic import Field, field_validator, model_validator
 from pydantic.config import JsonDict
+from pydantic.dataclasses import dataclass
 
 # adding this to the json_schema_extra field of a field will make it display by default in UIs
 DEFAULT_DISPLAY: JsonDict = {"ui_default_display": True}
@@ -141,7 +142,7 @@ class BaseEvalOutput(
         None,
         title="Result Details",
         description="Optional. The details of the evaluation. A list of objects that stores nested or more detailed data, such as details about the absorption of each letter.",
-    )
+    )  # type: ignore
 
     sae_bench_commit_hash: str = Field(
         title="SAE Bench Commit Hash",

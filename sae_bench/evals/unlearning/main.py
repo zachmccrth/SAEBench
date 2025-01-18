@@ -1,39 +1,38 @@
+import argparse
+import gc
 import os
+import pickle
+import random
+import re
 import shutil
 import time
-from pydantic import TypeAdapter
-import torch
-import pandas as pd
-import random
-import gc
-import json
-import numpy as np
-import pickle
-import re
-from tqdm import tqdm
 from dataclasses import asdict
-import argparse
 from datetime import datetime
-from transformer_lens import HookedTransformer
+
+import numpy as np
+import pandas as pd
+import torch
 from sae_lens import SAE
+from tqdm import tqdm
+from transformer_lens import HookedTransformer
+
+import sae_bench.sae_bench_utils.activation_collection as activation_collection
+import sae_bench.sae_bench_utils.general_utils as general_utils
+from sae_bench.evals.unlearning.eval_config import UnlearningEvalConfig
 from sae_bench.evals.unlearning.eval_output import (
     UnlearningEvalOutput,
     UnlearningMetricCategories,
     UnlearningMetrics,
 )
 from sae_bench.evals.unlearning.utils.eval import run_eval_single_sae
-import sae_bench.sae_bench_utils.activation_collection as activation_collection
-from sae_bench.evals.unlearning.eval_config import UnlearningEvalConfig
 from sae_bench.sae_bench_utils import (
     get_eval_uuid,
-    get_sae_lens_version,
     get_sae_bench_version,
+    get_sae_lens_version,
 )
 from sae_bench.sae_bench_utils.sae_selection_utils import (
     get_saes_from_regex,
-    select_saes_multiple_patterns,
 )
-import sae_bench.sae_bench_utils.general_utils as general_utils
 
 EVAL_TYPE = "unlearning"
 
@@ -58,8 +57,7 @@ def get_metrics_df(metrics_dir):
             metrics = pickle.load(f)
 
         file_name = os.path.basename(file_path)
-        sae_folder = os.path.dirname(file_path)
-        multiplier, n_features, layer, retain_thres = get_params(file_name)
+        multiplier, n_features, layer, retain_thres = get_params(file_name)  # type: ignore
 
         row = {}
         n_se_questions = 0
@@ -148,7 +146,9 @@ def run_eval(
     torch.manual_seed(config.random_seed)
 
     model = HookedTransformer.from_pretrained_no_processing(
-        config.model_name, device=device, dtype=config.llm_dtype
+        config.model_name,
+        device=device,
+        dtype=config.llm_dtype,  # type: ignore
     )
 
     for sae_release, sae_object_or_id in tqdm(
@@ -156,7 +156,7 @@ def run_eval(
     ):
         sae_id, sae, sparsity = general_utils.load_and_format_sae(
             sae_release, sae_object_or_id, device
-        )
+        )  # type: ignore
         sae = sae.to(device=device, dtype=llm_dtype)
 
         sae_result_path = general_utils.get_results_filepath(

@@ -1,8 +1,10 @@
-import torch
 import json
-from sae_bench.evals.scr_and_tpp.eval_config import ScrAndTppEvalConfig
+
+import torch
+
 import sae_bench.evals.scr_and_tpp.main as scr_and_tpp
 import sae_bench.sae_bench_utils.testing_utils as testing_utils
+from sae_bench.evals.scr_and_tpp.eval_config import ScrAndTppEvalConfig
 from sae_bench.sae_bench_utils.sae_selection_utils import select_saes_multiple_patterns
 
 tpp_results_filename = (
@@ -61,7 +63,7 @@ def test_scr_end_to_end_different_seed():
         clean_up_activations=True,
     )
 
-    with open(scr_results_filename, "r") as f:
+    with open(scr_results_filename) as f:
         expected_results = json.load(f)
 
     keys_to_compare = [
@@ -119,7 +121,7 @@ def test_tpp_end_to_end_different_seed():
         clean_up_activations=True,
     )
 
-    with open(tpp_results_filename, "r") as f:
+    with open(tpp_results_filename) as f:
         expected_results = json.load(f)
 
     keys_to_compare = [

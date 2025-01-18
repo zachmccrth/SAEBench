@@ -1,18 +1,17 @@
+import gc
+import math
+import time
+
+import einops
 import torch
 import torch.nn as nn
-import einops
-import time
-from typing import Optional
-from transformer_lens import HookedTransformer
 from sklearn.decomposition import IncrementalPCA
-import math
 from tqdm import tqdm
-import gc
+from transformer_lens import HookedTransformer
 
-import sae_bench.custom_saes.custom_sae_config as sae_config
 import sae_bench.custom_saes.base_sae as base_sae
-import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
 import sae_bench.sae_bench_utils.activation_collection as activation_collection
+import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
 
 
 class PCASAE(base_sae.BaseSAE):
@@ -23,7 +22,7 @@ class PCASAE(base_sae.BaseSAE):
         hook_layer: int,
         device: torch.device,
         dtype: torch.dtype,
-        hook_name: Optional[str] = None,
+        hook_name: str | None = None,
     ):
         hook_name = hook_name or f"blocks.{hook_layer}.hook_resid_post"
         super().__init__(d_in, d_in, model_name, hook_layer, device, dtype, hook_name)
@@ -139,7 +138,7 @@ def fit_PCA(
     # Set the learned components
     pca.mean.data = torch.tensor(ipca.mean_, dtype=torch.float32, device="cpu")
     pca.W_enc.data = torch.tensor(ipca.components_, dtype=torch.float32, device="cpu")
-    pca.W_dec.data = torch.tensor(ipca.components_.T, dtype=torch.float32, device="cpu")
+    pca.W_dec.data = torch.tensor(ipca.components_.T, dtype=torch.float32, device="cpu")  # type: ignore
 
     pca.save_state_dict(f"pca_{pca.cfg.model_name}_{pca.cfg.hook_name}.pt")
 
@@ -155,8 +154,9 @@ def fit_PCA_gpu(
     pca_batch_size: int,
 ) -> PCASAE:
     """Uses CUML for much faster training, requires installing cuml."""
-    import cupy as cp
-    from cuml.decomposition import IncrementalPCA as cuIPCA
+    # TODO: add these as dependencies to pyproject.toml
+    import cupy as cp  # type: ignore
+    from cuml.decomposition import IncrementalPCA as cuIPCA  # type: ignore
 
     # Calculate batching
     sequences_per_batch = pca_batch_size // pca.cfg.context_size
@@ -263,11 +263,14 @@ if __name__ == "__main__":
     )
 
     tokens_BL = dataset_utils.load_and_tokenize_dataset(
-        dataset_name, context_size, num_tokens, model.tokenizer
+        dataset_name,
+        context_size,
+        num_tokens,
+        model.tokenizer,  # type: ignore
     )
 
     for layer in layers:
-        pca = PCASAE(model_name, d_model, layer, context_size)
+        pca = PCASAE(model_name, d_model, layer, context_size)  # type: ignore
         # pca = fit_PCA(pca, model, tokens_BL, llm_batch_size, pca_batch_size)
         pca = fit_PCA_gpu(pca, model, tokens_BL, llm_batch_size, pca_batch_size)
 

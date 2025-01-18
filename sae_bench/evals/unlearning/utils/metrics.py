@@ -1,36 +1,32 @@
-import torch
+import gc
+import itertools
+import json
+import os
+import pickle
+import re
+import time
+from functools import partial
+from itertools import permutations
+from typing import Any
+
 import numpy as np
 import pandas as pd
-import re
-import os
-import time
-import pickle
-import os
-from transformer_lens import HookedTransformer
-from sae_lens import SAE
-import itertools
-from itertools import permutations
+import torch
 import torch.nn.functional as F
-import gc
-import json
-from tqdm import tqdm
 from datasets import load_dataset
-from functools import partial
-from jaxtyping import Float
-from typing import Any, Optional
-import requests
 from requests.exceptions import HTTPError
-import time
+from sae_lens import SAE
+from tqdm import tqdm
+from transformer_lens import HookedTransformer
 
-
+from sae_bench.evals.unlearning.utils.intervention import (
+    anthropic_clamp_resid_SAE_features,
+)
 from sae_bench.evals.unlearning.utils.var import (
     GEMMA_INST_FORMAT,
     MIXTRAL_INST_FORMAT,
-    PRE_WMDP_BIO,
     PRE_QUESTION_FORMAT,
-)
-from sae_bench.evals.unlearning.utils.intervention import (
-    anthropic_clamp_resid_SAE_features,
+    PRE_WMDP_BIO,
 )
 
 all_permutations = list(permutations([0, 1, 2, 3]))
@@ -65,13 +61,13 @@ def calculate_MCQ_metrics(
     mcq_batch_size: int,
     artifacts_folder: str,
     dataset_name: str = "wmdp-bio",
-    target_metric: Optional[str] = None,
-    question_subset: Optional[list[int]] = None,
-    question_subset_file: Optional[str] = None,
+    target_metric: str | None = None,
+    question_subset: list[int] | None = None,
+    question_subset_file: str | None = None,
     permutations: list[list[int]] = [[0, 1, 2, 3]],
     verbose: bool = True,
     without_question: bool = False,
-    prompt_format: Optional[str] = None,
+    prompt_format: str | None = None,
     split: str = "all",
     **kwargs: Any,
 ) -> dict[str, Any]:
@@ -82,19 +78,19 @@ def calculate_MCQ_metrics(
     ----------
     model : HookedTransformer
     dataset_name : str, default='wmdp-bio' - Or the dataset_name of MMLU
-    target_metric : Optional[str] - Name of the metric used to select a subset of questions
-    question_subset : Optional[List[int]] - A list of indices specifying the subset of questions to be used
-    question_subset_file : Optional[str] - Path to a file containing the indices for a subset of the questions to be used. Overrides question_subset if provided
-    permutations : List[List[int]], default=[[0, 1, 2, 3]] - List of permutations to be applied to the question indices
+    target_metric : str | None - Name of the metric used to select a subset of questions
+    question_subset : list[int] | None - A list of indices specifying the subset of questions to be used
+    question_subset_file : str | None - Path to a file containing the indices for a subset of the questions to be used. Overrides question_subset if provided
+    permutations : list[list[int]], default=[[0, 1, 2, 3]] - List of permutations to be applied to the question indices
     verbose : bool, default=True
     without_question : bool, default=False - Evaluate the model without instruction and question if True
-    prompt_format : Optional[str] - The format of the prompt to be used. Can be None, 'GEMMA_INST_FORMAT' or 'MIXTRAL_INST_FORMAT'
+    prompt_format : str | None - The format of the prompt to be used. Can be None, 'GEMMA_INST_FORMAT' or 'MIXTRAL_INST_FORMAT'
     split : str, default='all'
     **kwargs : Any - Additional arguments
 
     Returns:
     -------
-    metrics : Dict[str, Any] - A dictionary containing the calculated metrics for the dataset.
+    metrics : dict[str, Any] - A dictionary containing the calculated metrics for the dataset.
     """
 
     metrics = {}
@@ -111,9 +107,9 @@ def calculate_MCQ_metrics(
         # pre_question = 'The following are multiple choice questions (with answers) about history'
         dataset = load_dataset_with_retries("cais/mmlu", dataset_name, split="test")
 
-    answers = [x["answer"] for x in dataset]
-    questions = [x["question"] for x in dataset]
-    choices_list = [x["choices"] for x in dataset]
+    answers = [x["answer"] for x in dataset]  # type: ignore
+    questions = [x["question"] for x in dataset]  # type: ignore
+    choices_list = [x["choices"] for x in dataset]  # type: ignore
 
     # Select subset of questions
     assert target_metric in [
@@ -125,7 +121,6 @@ def calculate_MCQ_metrics(
     ], "target_metric not recognised"
     assert split in ["all", "train", "test"], "split not recognised"
     if target_metric is not None:
-        model_name = model.cfg.model_name
         full_dataset_name = (
             f"mmlu-{dataset_name.replace('_', '-')}"
             if dataset_name != "wmdp-bio"
@@ -137,7 +132,7 @@ def calculate_MCQ_metrics(
         question_subset_file = os.path.join(artifacts_folder, question_subset_file)
 
     if question_subset_file is not None:
-        question_subset = np.genfromtxt(question_subset_file, ndmin=1, dtype=int)
+        question_subset = np.genfromtxt(question_subset_file, ndmin=1, dtype=int)  # type: ignore
 
     # Only keep desired subset of questions
     if question_subset is not None:
@@ -207,17 +202,12 @@ def calculate_MCQ_metrics(
         )
 
     predicted_answers = output_probs.argmax(dim=1)
-    predicted_probs = output_probs.max(dim=1)[0]
 
     n_predicted_answers = len(predicted_answers)
 
     actual_answers = torch.tensor(actual_answers)[:n_predicted_answers].to(
         model.cfg.device
     )
-
-    predicted_prob_of_correct_answers = output_probs[
-        torch.arange(len(actual_answers)), actual_answers
-    ]
 
     is_correct = (actual_answers == predicted_answers).to(torch.float)
     mean_correct = is_correct.mean()
@@ -379,7 +369,6 @@ def get_per_token_loss(logits, tokens):
 def get_output_probs_abcd_hf(
     model, tokenizer, prompts, batch_size=1, n_batches=100, verbose=True
 ):
-    spaces_and_single_models = ["gemma-2b-it", "gemma-2b"]
     # answer_strings = ["A", "B", "C", "D"]
     answer_strings = [" A", " B", " C", " D"]
     istart = 0
@@ -452,8 +441,8 @@ def modify_model(model, sae, **ablate_params):
 
     if (
         isinstance(ablate_params["features_to_ablate"], int)
-        or isinstance(features_to_ablate, np.int64)
-        or isinstance(features_to_ablate, np.float64)
+        or isinstance(features_to_ablate, np.int64)  # type: ignore
+        or isinstance(features_to_ablate, np.float64)  # type: ignore
     ):
         features_to_ablate = [ablate_params["features_to_ablate"]]
         ablate_params["features_to_ablate"] = features_to_ablate
@@ -461,7 +450,7 @@ def modify_model(model, sae, **ablate_params):
     hook_params = dict(ablate_params)
     del hook_params["intervention_method"]
 
-    ablate_hook_func = partial(ablation_method, sae=sae, **hook_params)
+    ablate_hook_func = partial(ablation_method, sae=sae, **hook_params)  # type: ignore
     # features_to_ablate=features_to_ablate,
     # multiplier=ablate_params['multiplier']
     # )
@@ -546,7 +535,6 @@ def get_baseline_metrics(
         if dataset_name != "wmdp-bio"
         else dataset_name
     )
-    model_name = model.cfg.model_name
     q_type = metric_param["target_metric"]
 
     baseline_metrics_file = os.path.join(
@@ -558,7 +546,7 @@ def get_baseline_metrics(
 
     if not recompute and os.path.exists(baseline_metrics_file):
         # Load the json
-        with open(baseline_metrics_file, "r") as f:
+        with open(baseline_metrics_file) as f:
             baseline_metrics = json.load(f)
 
         # Convert lists to arrays for ease of use
@@ -723,7 +711,7 @@ def calculate_metrics_list(
         layer = sae.cfg.hook_layer
 
         save_file_name = f"{intervention_method}_multiplier{multiplier}_nfeatures{n_features}_layer{layer}_retainthres{retain_threshold}.pkl"
-        full_path = os.path.join(save_metrics_dir, save_file_name)
+        full_path = os.path.join(save_metrics_dir, save_file_name)  # type: ignore
 
         if os.path.exists(full_path) and not force_rerun:
             with open(full_path, "rb") as f:
@@ -802,7 +790,7 @@ def create_df_from_metrics(metrics_list):
     df_data = np.array(df_data)
 
     columns = ["loss_added"] + dataset_names + [x + "_prob" for x in dataset_names]
-    df = pd.DataFrame(df_data, columns=columns)
+    df = pd.DataFrame(df_data, columns=columns)  # type: ignore
 
     return df
 
@@ -852,14 +840,14 @@ def save_target_question_ids(
         mcq_batch_size,
         artifacts_folder,
         dataset_name,
-        permutations=all_permutations,
+        permutations=all_permutations,  # type: ignore
     )
     metrics_wo_question = calculate_MCQ_metrics(
         model,
         mcq_batch_size,
         artifacts_folder,
         dataset_name,
-        permutations=all_permutations,
+        permutations=all_permutations,  # type: ignore
         without_question=True,
     )
 
@@ -915,7 +903,7 @@ def load_dataset_from_name(dataset_name: str):
 
 def _find_correct_no_tricks(correct_questions, dataset_name):
     dataset = load_dataset_from_name(dataset_name)
-    choices_list = [x["choices"] for x in dataset]
+    choices_list = [x["choices"] for x in dataset]  # type: ignore
 
     def matches_pattern(s):
         pattern = r"^(Both )?(A|B|C|D) (and|&) (A|B|C|D)$"

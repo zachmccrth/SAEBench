@@ -52,7 +52,12 @@ jobs:
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
-      # TODO: Add linting, formatting, type checking to CI
+      - name: Linting
+        run: poetry run ruff check
+      - name: Formatting
+        run: poetry run ruff format --check
+      - name: Type Checking
+        run: poetry run pyright
       - name: Run Unit Tests
         run: poetry run pytest tests/unit
 

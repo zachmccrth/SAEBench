@@ -1,17 +1,15 @@
-import json
-from datetime import datetime
-import uuid
-from typing import Dict, Optional, Set, Type
-from beartype import beartype
 from argparse import ArgumentParser
+
+from beartype import beartype
 from pydantic import TypeAdapter
+
 from sae_bench.evals.base_eval_output import BaseEvalOutput
 
 
 @beartype
 def validate_eval_output_format_file(
     output_path: str,
-    eval_output_type: Type[BaseEvalOutput],
+    eval_output_type: type[BaseEvalOutput],
 ) -> None:
     """Validates that an eval output JSON file matches the required format
 
@@ -26,7 +24,7 @@ def validate_eval_output_format_file(
     """
 
     try:
-        with open(output_path, "r") as f:
+        with open(output_path) as f:
             output_str = f.read()
     except FileNotFoundError:
         raise FileNotFoundError(
@@ -38,7 +36,7 @@ def validate_eval_output_format_file(
 
 def validate_eval_output_format_str(
     output_str: str,
-    eval_output_type: Type[BaseEvalOutput],
+    eval_output_type: type[BaseEvalOutput],
 ) -> None:
     """Validates that an eval output string matches the required format
 
@@ -55,8 +53,8 @@ def validate_eval_output_format_str(
 
 def validate_eval_cli_interface(
     parser: ArgumentParser,
-    eval_config_cls: Optional[object] = None,
-    additional_required_args: Optional[Set[str]] = None,
+    eval_config_cls: object | None = None,
+    additional_required_args: set[str] | None = None,
 ) -> None:
     """Validates that an eval's CLI interface meets the requirements from eval_template.ipynb
 
@@ -91,7 +89,7 @@ def validate_eval_cli_interface(
 
     # If config class provided, verify CLI args match config fields
     if eval_config_cls:
-        config_fields = {field for field in eval_config_cls.__dataclass_fields__}
+        config_fields = {field for field in eval_config_cls.__dataclass_fields__}  # type: ignore
         # model_name is a special case that's both common and in config
         config_fields.add("model_name")
 
@@ -131,7 +129,7 @@ def compare_dicts_within_tolerance(
     path: str = "",
     all_diffs=None,
     ignore_keys: tuple[str] = ("random_seed",),
-    keys_to_compare: Optional[list[str]] = None,
+    keys_to_compare: list[str] | None = None,
 ):
     """
     Recursively compare two nested dictionaries and assert that all numeric values

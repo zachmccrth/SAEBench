@@ -3,9 +3,7 @@ import json
 import os
 import random
 import re
-import sys
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -35,21 +33,21 @@ class Prompt:
     entity: str
     context_split: str
     entity_split: str
-    input_ids: Optional[torch.Tensor] = None
-    attention_mask: Optional[torch.Tensor] = None
-    completion: Optional[str] = None
-    is_correct: Optional[bool] = None
+    input_ids: torch.Tensor | None = None
+    attention_mask: torch.Tensor | None = None
+    completion: str | None = None
+    is_correct: bool | None = None
 
 
 @dataclass
 class AttributePrompt:
     attribute: str
-    templates: List[str]
+    templates: list[str]
 
 
 def timezone_name_to_utc_offset(name):
     try:
-        offset = ZoneInfo(name).utcoffset(datetime.datetime.now()).seconds
+        offset = ZoneInfo(name).utcoffset(datetime.datetime.now()).seconds  # type: ignore
         sign = "+"
         if offset // 3600 >= 12:
             offset = 24 * 3600 - offset
@@ -64,11 +62,11 @@ def timezone_name_to_utc_offset(name):
 
 @dataclass
 class RAVELEntityPromptData:
-    prompts: Dict[str, Prompt] = field(default_factory=dict)
-    entity_attributes: Dict[str, Dict[str, str]] = field(default_factory=dict)
-    template_splits: Dict[str, str] = field(default_factory=dict)
-    entity_splits: Dict[str, str] = field(default_factory=dict)
-    attribute_prompts: List[AttributePrompt] = field(default_factory=list)
+    prompts: dict[str, Prompt] = field(default_factory=dict)
+    entity_attributes: dict[str, dict[str, str]] = field(default_factory=dict)
+    template_splits: dict[str, str] = field(default_factory=dict)
+    entity_splits: dict[str, str] = field(default_factory=dict)
+    attribute_prompts: list[AttributePrompt] = field(default_factory=list)
 
     @classmethod
     def from_files(cls, entity_type: str, data_dir: str, tokenizer):
@@ -138,7 +136,7 @@ class RAVELEntityPromptData:
         wiki_file_path = os.path.join(
             data_dir, "base", f"wikipedia_{entity_type}_entity_prompts.json"
         )
-        with open(wiki_file_path, "r") as f:
+        with open(wiki_file_path) as f:
             wiki_prompts = json.load(f)
 
         # Filter Wikipedia prompts to keep only those with exactly one '%s'
@@ -217,23 +215,23 @@ class RAVELEntityPromptData:
 
         print(f"Added {len(filtered_wiki_prompts)} Wikipedia prompt templates")
 
-    def get_prompts_by_split(self, context_split: str) -> List[Prompt]:
+    def get_prompts_by_split(self, context_split: str) -> list[Prompt]:
         return [
             prompt
             for prompt in self.prompts.values()
             if prompt.context_split == context_split
         ]
 
-    def get_entities(self, split: Optional[str] = None) -> List[str]:
+    def get_entities(self, split: str | None = None) -> list[str]:
         """
         Get entities, optionally filtered by split.
 
         Args:
-            split (Optional[str]): The split to filter entities by ('train', 'val', or 'test').
+            split (str | None): The split to filter entities by ('train', 'val', or 'test').
                                 If None, return all entities.
 
         Returns:
-            List[str]: A list of entity names.
+            list[str]: A list of entity names.
         """
         if split is None:
             return list(self.entity_splits.keys())
@@ -246,18 +244,18 @@ class RAVELEntityPromptData:
 
     def get_prompt_by_text(self, text: str) -> Prompt:
         assert text in self.prompts.keys(), f'Prompt with text "{text}" not found'
-        return self.prompts.get(text)
+        return self.prompts.get(text)  # type: ignore
 
-    def get_prompts_by_template(self, template: str) -> List[Prompt]:
+    def get_prompts_by_template(self, template: str) -> list[Prompt]:
         return [p for p in self.prompts.values() if p.template == template]
 
-    def get_prompts_by_attribute(self, attribute: str) -> List[Prompt]:
+    def get_prompts_by_attribute(self, attribute: str) -> list[Prompt]:
         return [p for p in self.prompts.values() if p.attribute == attribute]
 
-    def get_prompts_by_entity(self, entity: str) -> List[Prompt]:
+    def get_prompts_by_entity(self, entity: str) -> list[Prompt]:
         return [p for p in self.prompts.values() if p.entity == entity]
 
-    def _filter_data(self, filtered_prompts: Dict[str, Prompt]):
+    def _filter_data(self, filtered_prompts: dict[str, Prompt]):
         filtered_entities = set(prompt.entity for prompt in filtered_prompts.values())
         filtered_attributes = set(
             prompt.attribute for prompt in filtered_prompts.values()
@@ -329,7 +327,7 @@ class RAVELEntityPromptData:
                     )
                     <= 2
                 )
-            except:
+            except:  # noqa: E722
                 correct = False
         elif re.search("United States|United Kingdom", label):
             norm_label = label.strip().replace("the ", "")
@@ -376,9 +374,9 @@ class RAVELEntityPromptData:
                 if (
                     not correct
                     and re.search(r"[+\-](\d+)", norm_out)
-                    and int(re.search(r"[+\-](\d+)", norm_out).group(1)) > 11
+                    and int(re.search(r"[+\-](\d+)", norm_out).group(1)) > 11  # type: ignore
                 ):
-                    offset = 24 - int(re.search(r"[+\-](\d+)", norm_out).group(1))
+                    offset = 24 - int(re.search(r"[+\-](\d+)", norm_out).group(1))  # type: ignore
                     correct = str(offset) in norm_label
             else:
                 correct = False
@@ -390,9 +388,9 @@ class RAVELEntityPromptData:
         model: NNsight,
         tokenizer: AutoTokenizer,
         batch_size: int = 32,
-        max_length: Optional[int] = None,
+        max_length: int | None = None,
         prompt_max_length: int = 48,
-        max_new_tokens: Optional[int] = None,
+        max_new_tokens: int | None = None,
         **kwargs,
     ):
         all_prompts = list(self.prompts.values())
@@ -455,7 +453,7 @@ class RAVELEntityPromptData:
 
         # Keep top N entities
         kept_entities = set(
-            sorted(entity_scores, key=entity_scores.get, reverse=True)[:top_n_entities]
+            sorted(entity_scores, key=entity_scores.get, reverse=True)[:top_n_entities]  # type: ignore
         )
 
         # Calculate template scores and keep top N per attribute
@@ -473,7 +471,7 @@ class RAVELEntityPromptData:
             kept_templates.update(
                 sorted(
                     [t for t in attr_templates if t in template_scores],
-                    key=template_scores.get,
+                    key=template_scores.get,  # type: ignore
                     reverse=True,
                 )[:top_n_templates_per_attribute]
             )

@@ -1,22 +1,17 @@
-from datasets import load_dataset
 import json
-import einops
-from tqdm import tqdm
-import torch
-from torch import Tensor
-from jaxtyping import Float
-import gc
-import numpy as np
-import random
 import os
+import random
 
+import numpy as np
+import torch
+from datasets import load_dataset
 from sae_lens import SAE
 from transformer_lens import HookedTransformer
 
+import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
 from sae_bench.sae_bench_utils.activation_collection import (
     get_feature_activation_sparsity,
 )
-import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
 
 FORGET_FILENAME = "feature_sparsity_forget.txt"
 RETAIN_FILENAME = "feature_sparsity_retain.txt"
@@ -35,13 +30,13 @@ def get_forget_retain_data(
     if retain_corpora == "wikitext":
         raw_retain = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
         for x in raw_retain:
-            if len(x["text"]) > min_len:
-                retain_dataset.append(str(x["text"]))
+            if len(x["text"]) > min_len:  # type: ignore
+                retain_dataset.append(str(x["text"]))  # type: ignore
     else:
         raise Exception("Unknown retain corpora")
 
     forget_dataset = []
-    for line in open(f"./sae_bench/evals/unlearning/data/{forget_corpora}.jsonl", "r"):
+    for line in open(f"./sae_bench/evals/unlearning/data/{forget_corpora}.jsonl"):
         if "bio-forget-corpus" in forget_corpora:
             raw_text = json.loads(line)["text"]
         else:
@@ -75,10 +70,14 @@ def get_shuffled_forget_retain_tokens(
     )
 
     forget_tokens = dataset_utils.tokenize_and_concat_dataset(
-        model.tokenizer, shuffled_forget_dataset, seq_len=seq_len
+        model.tokenizer,  # type: ignore
+        shuffled_forget_dataset,
+        seq_len=seq_len,
     ).to(model.cfg.device)
     retain_tokens = dataset_utils.tokenize_and_concat_dataset(
-        model.tokenizer, retain_dataset, seq_len=seq_len
+        model.tokenizer,  # type: ignore
+        retain_dataset,
+        seq_len=seq_len,
     ).to(model.cfg.device)
 
     print(forget_tokens.shape, retain_tokens.shape)
@@ -99,7 +98,7 @@ def gather_residual_activations(model: HookedTransformer, target_layer: int, inp
     handle = model.model.layers[target_layer].register_forward_hook(
         gather_target_act_hook
     )
-    _ = model.forward(inputs)
+    _ = model.forward(inputs)  # type: ignore
     handle.remove()
     return target_act
 

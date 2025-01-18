@@ -1,11 +1,13 @@
-from sae_bench import sae_bench_utils
+import re
+import uuid
+
+import pytest
+import torch
+
 import sae_bench.sae_bench_utils.general_utils as general_utils
 import sae_bench.sae_bench_utils.indexing_utils as indexing_utils
 import sae_bench.sae_bench_utils.testing_utils as testing_utils
-import torch
-import pytest
-import re
-import uuid
+from sae_bench import sae_bench_utils
 
 
 def test_average_results():

@@ -1,12 +1,12 @@
-from typing import Callable, Optional
+import random
 from collections import defaultdict
+
+import einops
 import pandas as pd
 import torch
-import einops
 from datasets import load_dataset
 from tqdm import tqdm
 from transformers import AutoTokenizer
-import random
 
 import sae_bench.sae_bench_utils.dataset_info as dataset_info
 
@@ -20,9 +20,9 @@ def get_dataset_list_of_strs(
     result = []
 
     for row in dataset:
-        if len(row[column_name]) > min_row_chars:
-            result.append(row[column_name])
-            total_chars_so_far += len(row[column_name])
+        if len(row[column_name]) > min_row_chars:  # type: ignore
+            result.append(row[column_name])  # type: ignore
+            total_chars_so_far += len(row[column_name])  # type: ignore
             if total_chars_so_far > total_chars:
                 break
 
@@ -53,9 +53,9 @@ def tokenize_and_concat_dataset(
     dataset: list[str],
     seq_len: int,
     add_bos: bool = True,
-    max_tokens: Optional[int] = None,
+    max_tokens: int | None = None,
 ) -> torch.Tensor:
-    full_text = tokenizer.eos_token.join(dataset)
+    full_text = tokenizer.eos_token.join(dataset)  # type: ignore
 
     # divide into chunks to speed up tokenization
     num_chunks = 20
@@ -63,10 +63,10 @@ def tokenize_and_concat_dataset(
     chunks = [
         full_text[i * chunk_length : (i + 1) * chunk_length] for i in range(num_chunks)
     ]
-    tokens = tokenizer(chunks, return_tensors="pt", padding=True)["input_ids"].flatten()
+    tokens = tokenizer(chunks, return_tensors="pt", padding=True)["input_ids"].flatten()  # type: ignore
 
     # remove pad token
-    tokens = tokens[tokens != tokenizer.pad_token_id]
+    tokens = tokens[tokens != tokenizer.pad_token_id]  # type: ignore
 
     if max_tokens is not None:
         tokens = tokens[: max_tokens + seq_len + 1]
@@ -81,7 +81,7 @@ def tokenize_and_concat_dataset(
     )
 
     if add_bos:
-        tokens[:, 0] = tokenizer.bos_token_id
+        tokens[:, 0] = tokenizer.bos_token_id  # type: ignore
     return tokens
 
 
@@ -102,7 +102,7 @@ def gather_dataset_from_df(
 
         sampled_texts = (
             class_df[text_key]
-            .sample(n=min_samples_per_category, random_state=random_seed)
+            .sample(n=min_samples_per_category, random_state=random_seed)  # type: ignore
             .tolist()
         )
         assert len(sampled_texts) == min_samples_per_category
@@ -122,15 +122,15 @@ def get_ag_news_dataset(
     random.seed(random_seed)
 
     dataset = load_dataset(dataset_name, streaming=False)
-    train_df = pd.DataFrame(dataset["train"])
-    test_df = pd.DataFrame(dataset["test"])
+    train_df = pd.DataFrame(dataset["train"])  # type: ignore
+    test_df = pd.DataFrame(dataset["test"])  # type: ignore
 
     # It's a binary classification task, so we need to halve the train and test sizes
     train_size = train_set_size // 2
     test_size = test_set_size // 2
 
     # convert str to int, as labels are stored as ints
-    chosen_classes = [int(chosen_class) for chosen_class in chosen_classes]
+    chosen_classes = [int(chosen_class) for chosen_class in chosen_classes]  # type: ignore
 
     train_data = gather_dataset_from_df(
         train_df, chosen_classes, train_size, "label", "text", random_seed
@@ -181,7 +181,7 @@ def get_europarl_dataset(
         # Collect samples for each language
         for sample in dataset:
             # Extract the text in the target language
-            text = sample[label_key][language]
+            text = sample[label_key][language]  # type: ignore
             samples_by_language[language].append(text)
 
             # Check if we have enough samples for all languages
@@ -243,14 +243,14 @@ def get_github_code_dataset(
 
     # Collect samples for each language
     for sample in dataset:
-        if sample[label_key] in chosen_classes:
-            code = sample["code"]
+        if sample[label_key] in chosen_classes:  # type: ignore
+            code = sample["code"]  # type: ignore
 
             # In "Neurons in a Haystack", the authors skipped the first 50 tokens to avoid the license header
             # This is using characters so it's tokenizer agnostic
             if len(code) > (ctx_len_chars + chars_to_skip):
                 code = code[chars_to_skip:]
-                all_samples[sample[label_key]].append(code)
+                all_samples[sample[label_key]].append(code)  # type: ignore
 
             # Check if we have collected enough samples for all languages
             if all(len(all_samples[lang]) > total_size for lang in chosen_classes):
@@ -298,8 +298,8 @@ def get_balanced_dataset(
 
     for profession in tqdm(df[column1_name].unique()):
         prof_df = df[df[column1_name] == profession]
-        unique_groups = prof_df[column2_name].unique()
-        min_count = prof_df[column2_name].value_counts().min()
+        unique_groups = prof_df[column2_name].unique()  # type: ignore
+        min_count = prof_df[column2_name].value_counts().min()  # type: ignore
 
         if len(unique_groups) < 2:
             continue  # Skip professions with less than two groups
@@ -327,8 +327,8 @@ def get_bias_in_bios_or_amazon_product_dataset(
     dataset_name = dataset_name.split("_class_set")[0]
 
     dataset = load_dataset(dataset_name)
-    train_df = pd.DataFrame(dataset["train"])
-    test_df = pd.DataFrame(dataset["test"])
+    train_df = pd.DataFrame(dataset["train"])  # type: ignore
+    test_df = pd.DataFrame(dataset["test"])  # type: ignore
 
     # 4 is because male / female split for each profession, 2 quadrants per profession, 2 professions for binary task
     minimum_train_samples_per_quadrant = train_set_size // 4
@@ -349,8 +349,8 @@ def get_amazon_sentiment_dataset(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     dataset_name = dataset_name.split("_sentiment")[0]
     dataset = load_dataset(dataset_name)
-    train_df = pd.DataFrame(dataset["train"])
-    test_df = pd.DataFrame(dataset["test"])
+    train_df = pd.DataFrame(dataset["train"])  # type: ignore
+    test_df = pd.DataFrame(dataset["test"])  # type: ignore
 
     minimum_train_samples_per_category = train_set_size // 2
     minimum_test_samples_per_category = test_set_size // 2
@@ -362,7 +362,7 @@ def get_amazon_sentiment_dataset(
         test_df, minimum_test_samples_per_category, random_seed
     )
 
-    return train_data, test_data
+    return train_data, test_data  # type: ignore
 
 
 def get_balanced_amazon_sentiment_dataset(
@@ -383,7 +383,7 @@ def get_balanced_amazon_sentiment_dataset(
 
         sampled_texts = (
             df_rating[text_column_name]
-            .sample(n=min_samples_per_category, random_state=random_seed)
+            .sample(n=min_samples_per_category, random_state=random_seed)  # type: ignore
             .tolist()
         )
         assert len(sampled_texts) == min_samples_per_category
@@ -459,7 +459,7 @@ def get_multi_label_train_test_data(
     else:
         raise ValueError(f"Dataset {dataset_name} not supported")
 
-    train_data, test_data = ensure_shared_keys(train_data, test_data)
+    train_data, test_data = ensure_shared_keys(train_data, test_data)  # type: ignore
 
     return train_data, test_data
 
@@ -477,7 +477,7 @@ def tokenize_data_dictionary(
                 truncation=True,
                 max_length=max_length,
                 return_tensors="pt",
-            )
+            )  # type: ignore
             .to(device)
             .data
         )

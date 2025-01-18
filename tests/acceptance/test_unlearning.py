@@ -1,8 +1,10 @@
 import json
+
 import torch
-from sae_bench.evals.unlearning.eval_config import UnlearningEvalConfig
+
 import sae_bench.evals.unlearning.main as unlearning
 import sae_bench.sae_bench_utils.testing_utils as testing_utils
+from sae_bench.evals.unlearning.eval_config import UnlearningEvalConfig
 from sae_bench.sae_bench_utils.sae_selection_utils import select_saes_multiple_patterns
 
 results_filename = (
@@ -56,7 +58,7 @@ def test_end_to_end_different_seed():
     with open("test_data.json", "w") as f:
         json.dump(run_results, f, indent=4)
 
-    with open(results_filename, "r") as f:
+    with open(results_filename) as f:
         expected_results = json.load(f)
 
     sae_name = "sae_bench_gemma-2-2b_topk_width-2pow14_date-1109_blocks.5.hook_resid_post__trainer_2"

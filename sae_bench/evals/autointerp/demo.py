@@ -25,7 +25,7 @@ save_logs_path = Path(__file__).parent / "logs_4.txt"
 save_logs_path.unlink(missing_ok=True)
 results = run_eval(
     cfg, selected_saes, str(device), api_key, save_logs_path=save_logs_path
-)
+)  # type: ignore
 print(results)
 
 # ! Demo 2: 100 randomly chosen latents
@@ -34,7 +34,7 @@ save_logs_path = Path(__file__).parent / "logs_100.txt"
 save_logs_path.unlink(missing_ok=True)
 results = run_eval(
     cfg, selected_saes, str(device), api_key, save_logs_path=save_logs_path
-)
+)  # type: ignore
 print(results)
 
 # python demo.py

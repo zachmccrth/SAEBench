@@ -1,13 +1,14 @@
 # %%
 
+# ruff: noqa
+# type: ignore
+# TODO: Add proper type hints and enable linting, most imports are broken currently
+
+
 import copy
-import json
-import os
 import random
-import sys
 import time
 from dataclasses import asdict
-
 
 import pandas as pd
 import torch
@@ -16,13 +17,10 @@ from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_direc
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
-from sae_bench.evals.sparse_probing import probe_training
-from sae_bench.evals.sparse_probing import eval_config
-
-import sae_bench.sae_bench_utils
 import sae_bench.sae_bench_utils.activation_collection as activation_collection
 import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
 import sae_bench.sae_bench_utils.formatting_utils as formatting_utils
+from sae_bench.evals.sparse_probing import eval_config, probe_training
 
 
 def average_test_accuracy(test_accuracies: dict[str, float]) -> float:
@@ -123,7 +121,6 @@ llm_results = {"llm_test_accuracy": average_test_accuracy(llm_test_accuracies)}
 
 # %%
 
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -235,7 +232,7 @@ def train_sklearn_probe(
     max_iter: int = 100,  # non-default sklearn value, increased due to convergence warnings
     C: float = 1.0,  # default sklearn value
     verbose: bool = False,
-    l1_ratio: Optional[float] = None,
+    l1_ratio: float | None = None,
 ) -> tuple[LogisticRegression, float]:
     # Convert torch tensors to numpy arrays
     train_inputs_np = train_inputs.cpu().numpy()
@@ -268,7 +265,7 @@ def train_sklearn_probe(
     test_accuracy = accuracy_score(test_labels_np, probe.predict(test_inputs_np))
 
     if verbose:
-        print(f"\nTraining completed.")
+        print("\nTraining completed.")
         print(f"Train accuracy: {train_accuracy}, Test accuracy: {test_accuracy}\n")
 
     return probe, test_accuracy
@@ -336,7 +333,7 @@ def train_probe_gpu(
     epochs: int,
     lr: float,
     verbose: bool = False,
-    l1_penalty: Optional[float] = None,
+    l1_penalty: float | None = None,
     early_stopping_patience: int = 5,
 ):  # tuple[Probe, float]:
     device = train_inputs.device
@@ -397,7 +394,7 @@ def train_probe_gpu(
 def train_probe_on_activations(
     train_activations: dict[str, Float[torch.Tensor, "train_dataset_size d_model"]],
     test_activations: dict[str, Float[torch.Tensor, "test_dataset_size d_model"]],
-    select_top_k: Optional[int] = None,
+    select_top_k: int | None = None,
 ):  # -> tuple[dict[str, LogisticRegression], dict[str, float]]:
     torch.set_grad_enabled(True)
 

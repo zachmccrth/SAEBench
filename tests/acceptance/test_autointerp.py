@@ -1,8 +1,10 @@
 import json
+
 import torch
-from sae_bench.evals.autointerp.eval_config import AutoInterpEvalConfig
+
 import sae_bench.evals.autointerp.main as autointerp
 import sae_bench.sae_bench_utils.testing_utils as testing_utils
+from sae_bench.evals.autointerp.eval_config import AutoInterpEvalConfig
 from sae_bench.sae_bench_utils.sae_selection_utils import select_saes_multiple_patterns
 
 results_filename = (
@@ -20,7 +22,7 @@ def test_end_to_end_different_seed():
 
     print(f"Using device: {device}")
 
-    with open("openai_api_key.txt", "r") as f:
+    with open("openai_api_key.txt") as f:
         openai_api_key = f.read().strip()
 
     test_config = AutoInterpEvalConfig(model_name="pythia-70m-deduped")
@@ -55,7 +57,7 @@ def test_end_to_end_different_seed():
     with open("test.json", "w") as f:
         json.dump(run_results, f)
 
-    with open(results_filename, "r") as f:
+    with open(results_filename) as f:
         expected_results = json.load(f)
 
     sae_name = "sae_bench_pythia70m_sweep_topk_ctx128_0730_blocks.4.hook_resid_post__trainer_10"

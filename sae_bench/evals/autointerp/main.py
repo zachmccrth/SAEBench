@@ -1,14 +1,14 @@
+import argparse
 import asyncio
 import gc
+import os
 import random
+import time
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
-from typing import Any, Iterator, Literal, TypeAlias, Optional
-import os
-import time
-import argparse
-import json
 from datetime import datetime
+from typing import Any, Literal, TypeAlias
 
 import torch
 from openai import OpenAI
@@ -18,6 +18,9 @@ from torch import Tensor
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
+import sae_bench.sae_bench_utils.activation_collection as activation_collection
+import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
+import sae_bench.sae_bench_utils.general_utils as general_utils
 from sae_bench.evals.autointerp.eval_config import AutoInterpEvalConfig
 from sae_bench.evals.autointerp.eval_output import (
     EVAL_TYPE_ID_AUTOINTERP,
@@ -25,25 +28,18 @@ from sae_bench.evals.autointerp.eval_output import (
     AutoInterpMetricCategories,
     AutoInterpMetrics,
 )
-
+from sae_bench.sae_bench_utils import (
+    get_eval_uuid,
+    get_sae_bench_version,
+    get_sae_lens_version,
+)
 from sae_bench.sae_bench_utils.indexing_utils import (
     get_iw_sample_indices,
     get_k_largest_indices,
     index_with_buffer,
 )
-import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
-import sae_bench.sae_bench_utils.activation_collection as activation_collection
-import sae_bench.sae_bench_utils.general_utils as general_utils
-
-
-from sae_bench.sae_bench_utils import (
-    get_eval_uuid,
-    get_sae_lens_version,
-    get_sae_bench_version,
-)
 from sae_bench.sae_bench_utils.sae_selection_utils import (
     get_saes_from_regex,
-    select_saes_multiple_patterns,
 )
 
 Messages: TypeAlias = list[dict[Literal["role", "content"], str]]
@@ -519,7 +515,7 @@ def run_eval_single_sae(
     device: str,
     artifacts_folder: str,
     api_key: str,
-    sae_sparsity: Optional[torch.Tensor] = None,
+    sae_sparsity: torch.Tensor | None = None,
 ) -> dict[str, float]:
     random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
@@ -537,7 +533,7 @@ def run_eval_single_sae(
             config.dataset_name,
             config.llm_context_size,
             config.total_tokens,
-            model.tokenizer,
+            model.tokenizer,  # type: ignore
         ).to(device)
         torch.save(tokenized_dataset, tokens_path)
 
@@ -564,7 +560,7 @@ def run_eval_single_sae(
         device=device,
     )
     results = asyncio.run(autointerp.run())
-    return results
+    return results  # type: ignore
 
 
 def run_eval(
@@ -574,7 +570,7 @@ def run_eval(
     api_key: str,
     output_path: str,
     force_rerun: bool = False,
-    save_logs_path: Optional[str] = None,
+    save_logs_path: str | None = None,
 ) -> dict[str, Any]:
     """
     selected_saes is a list of either tuples of (sae_lens release, sae_lens id) or (sae_name, SAE object)
@@ -599,7 +595,7 @@ def run_eval(
     ):
         sae_id, sae, sparsity = general_utils.load_and_format_sae(
             sae_release, sae_object_or_id, device
-        )
+        )  # type: ignore
         sae = sae.to(device=device, dtype=llm_dtype)
 
         sae_result_path = general_utils.get_results_filepath(
@@ -628,22 +624,22 @@ def run_eval(
             ]
             logs = "Summary table:\n" + tabulate(
                 [
-                    [sae_eval_result[latent][h] for h in headers]
+                    [sae_eval_result[latent][h] for h in headers]  # type: ignore
                     for latent in sae_eval_result
                 ],
                 headers=headers,
                 tablefmt="simple_outline",
             )
-            worst_result = min(sae_eval_result.values(), key=lambda x: x["score"])
-            best_result = max(sae_eval_result.values(), key=lambda x: x["score"])
-            logs += f"\n\nWorst scoring idx {worst_result['latent']}, score = {worst_result['score']}\n{worst_result['logs']}"
-            logs += f"\n\nBest scoring idx {best_result['latent']}, score = {best_result['score']}\n{best_result['logs']}"
+            worst_result = min(sae_eval_result.values(), key=lambda x: x["score"])  # type: ignore
+            best_result = max(sae_eval_result.values(), key=lambda x: x["score"])  # type: ignore
+            logs += f"\n\nWorst scoring idx {worst_result['latent']}, score = {worst_result['score']}\n{worst_result['logs']}"  # type: ignore
+            logs += f"\n\nBest scoring idx {best_result['latent']}, score = {best_result['score']}\n{best_result['logs']}"  # type: ignore
             # Save the results to a file
             with open(save_logs_path, "a") as f:
                 f.write(logs)
 
         # Put important results into the results dict
-        all_scores = [r["score"] for r in sae_eval_result.values()]
+        all_scores = [r["score"] for r in sae_eval_result.values()]  # type: ignore
 
         all_scores_tensor = torch.tensor(all_scores)
         score = all_scores_tensor.mean().item()

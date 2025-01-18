@@ -1,10 +1,16 @@
+import json
 import os
-from typing import Any, Optional
-from tqdm import tqdm
+
 import torch
 from huggingface_hub import snapshot_download
-import json
+from tqdm import tqdm
 
+import sae_bench.custom_saes.base_sae as base_sae
+import sae_bench.custom_saes.batch_topk_sae as batch_topk_sae
+import sae_bench.custom_saes.gated_sae as gated_sae
+import sae_bench.custom_saes.jumprelu_sae as jumprelu_sae
+import sae_bench.custom_saes.relu_sae as relu_sae
+import sae_bench.custom_saes.topk_sae as topk_sae
 import sae_bench.evals.absorption.main as absorption
 import sae_bench.evals.autointerp.main as autointerp
 import sae_bench.evals.core.main as core
@@ -12,13 +18,6 @@ import sae_bench.evals.scr_and_tpp.main as scr_and_tpp
 import sae_bench.evals.sparse_probing.main as sparse_probing
 import sae_bench.evals.unlearning.main as unlearning
 import sae_bench.sae_bench_utils.general_utils as general_utils
-
-import sae_bench.custom_saes.base_sae as base_sae
-import sae_bench.custom_saes.relu_sae as relu_sae
-import sae_bench.custom_saes.jumprelu_sae as jumprelu_sae
-import sae_bench.custom_saes.topk_sae as topk_sae
-import sae_bench.custom_saes.batch_topk_sae as batch_topk_sae
-import sae_bench.custom_saes.gated_sae as gated_sae
 
 MODEL_CONFIGS = {
     "pythia-70m-deduped": {
@@ -99,14 +98,14 @@ def load_dictionary_learning_sae(
     model_name,
     device: str,
     dtype: torch.dtype,
-    layer: Optional[int] = None,
+    layer: int | None = None,
     download_location: str = "downloaded_saes",
 ) -> base_sae.BaseSAE:
     download_location = os.path.join(download_location, repo_id.replace("/", "_"))
 
     config_file = f"{download_location}/{location}/config.json"
 
-    with open(config_file, "r") as f:
+    with open(config_file) as f:
         config = json.load(f)
 
     trainer_class = config["trainer"]["trainer_class"]
@@ -153,7 +152,7 @@ def run_evals(
     device: str,
     eval_types: list[str],
     random_seed: int,
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
     force_rerun: bool = False,
 ):
     """Run selected evaluations for the given model and SAEs."""
@@ -187,7 +186,7 @@ def run_evals(
                 ),
                 selected_saes,
                 device,
-                api_key,
+                api_key,  # type: ignore
                 "eval_results/autointerp",
                 force_rerun,
             )

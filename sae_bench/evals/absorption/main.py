@@ -1,18 +1,24 @@
-from dataclasses import asdict
+import argparse
 import gc
+import os
 import statistics
-from sae_lens import SAE
-import torch
-from tqdm import tqdm
+import time
+from dataclasses import asdict
+from datetime import datetime
+
 import pandas as pd
+import torch
+from sae_lens import SAE
+from tqdm import tqdm
+from transformer_lens import HookedTransformer
 
 from sae_bench.evals.absorption.eval_config import AbsorptionEvalConfig
 from sae_bench.evals.absorption.eval_output import (
     EVAL_TYPE_ID_ABSORPTION,
     AbsorptionEvalOutput,
+    AbsorptionMeanMetrics,
     AbsorptionMetricCategories,
     AbsorptionResultDetail,
-    AbsorptionMeanMetrics,
 )
 from sae_bench.evals.absorption.feature_absorption import (
     run_feature_absortion_experiment,
@@ -22,15 +28,10 @@ from sae_bench.sae_bench_utils import (
     activation_collection,
     general_utils,
     get_eval_uuid,
-    get_sae_lens_version,
     get_sae_bench_version,
+    get_sae_lens_version,
 )
 from sae_bench.sae_bench_utils.sae_selection_utils import get_saes_from_regex
-from transformer_lens import HookedTransformer
-from datetime import datetime
-import os
-import time
-import argparse
 
 
 def run_eval(
@@ -67,7 +68,7 @@ def run_eval(
     ):
         sae_id, sae, sparsity = general_utils.load_and_format_sae(
             sae_release, sae_object_or_id, device
-        )
+        )  # type: ignore
         sae = sae.to(device=device, dtype=llm_dtype)
 
         sae_result_path = general_utils.get_results_filepath(
@@ -132,12 +133,12 @@ def run_eval(
             num_split_features.append(row["num_split_feats"])
             eval_result_details.append(
                 AbsorptionResultDetail(
-                    first_letter=letter,
-                    mean_absorption_fraction=row["mean_absorption_fraction"],
-                    full_absorption_rate=row["full_absorption_rate"],
-                    num_full_absorption=row["num_full_absorption"],
-                    num_probe_true_positives=row["num_probe_true_positives"],
-                    num_split_features=row["num_split_feats"],
+                    first_letter=letter,  # type: ignore
+                    mean_absorption_fraction=row["mean_absorption_fraction"],  # type: ignore
+                    full_absorption_rate=row["full_absorption_rate"],  # type: ignore
+                    num_full_absorption=row["num_full_absorption"],  # type: ignore
+                    num_probe_true_positives=row["num_probe_true_positives"],  # type: ignore
+                    num_split_features=row["num_split_feats"],  # type: ignore
                 )
             )
 

@@ -1,8 +1,8 @@
+import json
+
 import torch
 import torch.nn as nn
 from huggingface_hub import hf_hub_download
-import json
-from typing import Optional
 
 import sae_bench.custom_saes.base_sae as base_sae
 
@@ -18,7 +18,7 @@ class TopKSAE(base_sae.BaseSAE):
         device: torch.device,
         dtype: torch.dtype,
         use_threshold: bool = False,
-        hook_name: Optional[str] = None,
+        hook_name: str | None = None,
     ):
         hook_name = hook_name or f"blocks.{hook_layer}.hook_resid_post"
         super().__init__(d_in, d_sae, model_name, hook_layer, device, dtype, hook_name)
@@ -75,7 +75,7 @@ def load_dictionary_learning_topk_sae(
     model_name: str,
     device: torch.device,
     dtype: torch.dtype,
-    layer: Optional[int] = None,
+    layer: int | None = None,
     local_dir: str = "downloaded_saes",
 ) -> TopKSAE:
     assert "ae.pt" in filename
@@ -97,7 +97,7 @@ def load_dictionary_learning_topk_sae(
         local_dir=local_dir,
     )
 
-    with open(path_to_config, "r") as f:
+    with open(path_to_config) as f:
         config = json.load(f)
 
     if layer is not None:
@@ -142,7 +142,7 @@ def load_dictionary_learning_topk_sae(
         d_sae=renamed_params["b_enc"].shape[0],
         k=k,
         model_name=model_name,
-        hook_layer=layer,
+        hook_layer=layer,  # type: ignore
         device=device,
         dtype=dtype,
         use_threshold=use_threshold,
@@ -180,6 +180,11 @@ if __name__ == "__main__":
     hook_name = f"blocks.{layer}.hook_resid_post"
 
     sae = load_dictionary_learning_topk_sae(
-        repo_id, filename, model_name, device, dtype, layer=layer
+        repo_id,
+        filename,
+        model_name,
+        device,  # type: ignore
+        dtype,
+        layer=layer,
     )
     sae.test_sae(model_name)

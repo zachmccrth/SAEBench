@@ -1,14 +1,14 @@
-import torch
-import torch.nn as nn
-from tqdm import tqdm
-from typing import Callable, Optional, Any
-from jaxtyping import Bool, Int, Float, jaxtyped
-from beartype import beartype
+import os
+from typing import Any
+
 import einops
+import torch
+from beartype import beartype
+from jaxtyping import Bool, Float, Int, jaxtyped
+from sae_lens import SAE
+from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformers import AutoTokenizer
-from sae_lens import SAE
-import os
 
 # Relevant at ctx len 128
 LLM_NAME_TO_BATCH_SIZE = {
@@ -37,9 +37,9 @@ def get_bos_pad_eos_mask(
     tokens: Int[torch.Tensor, "dataset_size seq_len"], tokenizer: AutoTokenizer | Any
 ) -> Bool[torch.Tensor, "dataset_size seq_len"]:
     mask = (
-        (tokens == tokenizer.pad_token_id)
-        | (tokens == tokenizer.eos_token_id)
-        | (tokens == tokenizer.bos_token_id)
+        (tokens == tokenizer.pad_token_id)  # type: ignore
+        | (tokens == tokenizer.eos_token_id)  # type: ignore
+        | (tokens == tokenizer.bos_token_id)  # type: ignore
     ).to(dtype=torch.bool)
     return ~mask
 
@@ -126,8 +126,8 @@ def collect_sae_activations(
     layer: int,
     hook_name: str,
     mask_bos_pad_eos_tokens: bool = False,
-    selected_latents: Optional[list[int]] = None,
-    activation_dtype: Optional[torch.dtype] = None,
+    selected_latents: list[int] | None = None,
+    activation_dtype: torch.dtype | None = None,
 ) -> Float[torch.Tensor, "dataset_size seq_len indexed_d_sae"]:
     """Collects SAE activations for a given set of tokens.
     Note: If evaluating many SAEs, it is more efficient to use save_activations() and encode_precomputed_activations()."""
@@ -330,8 +330,8 @@ def encode_precomputed_activations(
     num_chunks: int,
     activation_dir: str,
     mask_bos_pad_eos_tokens: bool = False,
-    selected_latents: Optional[list[int]] = None,
-    activation_dtype: Optional[torch.dtype] = None,
+    selected_latents: list[int] | None = None,
+    activation_dtype: torch.dtype | None = None,
 ) -> Float[torch.Tensor, "dataset_size seq_len d_sae"]:
     """Process saved activations through an SAE model, handling memory constraints through batching.
 

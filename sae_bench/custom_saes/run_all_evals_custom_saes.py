@@ -1,5 +1,6 @@
 import os
-from typing import Any, Optional
+from typing import Any
+
 from tqdm import tqdm
 
 import sae_bench.evals.absorption.main as absorption
@@ -9,7 +10,6 @@ import sae_bench.evals.scr_and_tpp.main as scr_and_tpp
 import sae_bench.evals.sparse_probing.main as sparse_probing
 import sae_bench.evals.unlearning.main as unlearning
 import sae_bench.sae_bench_utils.general_utils as general_utils
-
 
 RANDOM_SEED = 42
 
@@ -46,7 +46,7 @@ def run_evals(
     llm_dtype: str,
     device: str,
     eval_types: list[str],
-    api_key: Optional[str] = None,
+    api_key: str | None = None,
     force_rerun: bool = False,
     save_activations: bool = False,
 ):
@@ -81,7 +81,7 @@ def run_evals(
                 ),
                 selected_saes,
                 device,
-                api_key,
+                api_key,  # type: ignore
                 "eval_results/autointerp",
                 force_rerun,
             )
@@ -198,7 +198,6 @@ def run_evals(
 
 if __name__ == "__main__":
     import sae_bench.custom_saes.identity_sae as identity_sae
-    import sae_bench.custom_saes.pca_sae as pca_sae
 
     device = general_utils.setup_environment()
 
@@ -246,8 +245,11 @@ if __name__ == "__main__":
 
     for hook_layer in MODEL_CONFIGS[model_name]["layers"]:
         sae = identity_sae.IdentitySAE(
-            model_name, d_model, hook_layer, context_size=128
-        )
+            model_name,
+            d_model,
+            hook_layer,
+            context_size=128,  # type: ignore
+        )  # type: ignore
         selected_saes = [(f"{model_name}_layer_{hook_layer}_identity_sae", sae)]
 
         # This will evaluate PCA SAEs

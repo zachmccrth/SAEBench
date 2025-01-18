@@ -1,16 +1,22 @@
+import argparse
 import gc
 import os
-import shutil
 import random
+import shutil
 import time
 from dataclasses import asdict
-from pydantic import TypeAdapter
+from datetime import datetime
+
 import torch
 from sae_lens import SAE
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
-import argparse
-from datetime import datetime
+
+import sae_bench.evals.sparse_probing.probe_training as probe_training
+import sae_bench.sae_bench_utils.activation_collection as activation_collection
+import sae_bench.sae_bench_utils.dataset_info as dataset_info
+import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
+import sae_bench.sae_bench_utils.general_utils as general_utils
 from sae_bench.evals.sparse_probing.eval_config import SparseProbingEvalConfig
 from sae_bench.evals.sparse_probing.eval_output import (
     EVAL_TYPE_ID_SPARSE_PROBING,
@@ -20,15 +26,10 @@ from sae_bench.evals.sparse_probing.eval_output import (
     SparseProbingResultDetail,
     SparseProbingSaeMetrics,
 )
-import sae_bench.evals.sparse_probing.probe_training as probe_training
-import sae_bench.sae_bench_utils.activation_collection as activation_collection
-import sae_bench.sae_bench_utils.dataset_info as dataset_info
-import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
-import sae_bench.sae_bench_utils.general_utils as general_utils
 from sae_bench.sae_bench_utils import (
     get_eval_uuid,
-    get_sae_lens_version,
     get_sae_bench_version,
+    get_sae_lens_version,
 )
 from sae_bench.sae_bench_utils.sae_selection_utils import (
     get_saes_from_regex,
@@ -57,10 +58,16 @@ def get_dataset_activations(
     test_data = dataset_utils.filter_dataset(test_data, chosen_classes)
 
     train_data = dataset_utils.tokenize_data_dictionary(
-        train_data, model.tokenizer, config.context_length, device
+        train_data,
+        model.tokenizer,  # type: ignore
+        config.context_length,
+        device,
     )
     test_data = dataset_utils.tokenize_data_dictionary(
-        test_data, model.tokenizer, config.context_length, device
+        test_data,
+        model.tokenizer,  # type: ignore
+        config.context_length,
+        device,
     )
 
     all_train_acts_BLD = activation_collection.get_all_llm_activations(
@@ -105,18 +112,18 @@ def run_eval_single_dataset(
 
     if not os.path.exists(activations_path):
         if config.lower_vram_usage:
-            model = model.to(device)
+            model = model.to(device)  # type: ignore
         all_train_acts_BLD, all_test_acts_BLD = get_dataset_activations(
             dataset_name,
             config,
             model,
-            config.llm_batch_size,
+            config.llm_batch_size,  # type: ignore
             layer,
             hook_point,
             device,
         )
         if config.lower_vram_usage:
-            model = model.to("cpu")
+            model = model.to("cpu")  # type: ignore
 
         all_train_acts_BD = activation_collection.create_meaned_model_activations(
             all_train_acts_BLD
@@ -159,7 +166,7 @@ def run_eval_single_dataset(
             torch.save(acts, activations_path)
     else:
         if config.lower_vram_usage:
-            model = model.to("cpu")
+            model = model.to("cpu")  # type: ignore
         print(f"Loading activations from {activations_path}")
         acts = torch.load(activations_path)
         all_train_acts_BLD = acts["train"]
@@ -268,9 +275,9 @@ def run_eval_single_sae(
         results_dict[f"{dataset_name}"] = dataset_result
 
     if config.lower_vram_usage:
-        model = model.to(device)
+        model = model.to(device)  # type: ignore
 
-    return results_dict, per_class_dict
+    return results_dict, per_class_dict  # type: ignore
 
 
 def run_eval(
@@ -309,7 +316,7 @@ def run_eval(
     ):
         sae_id, sae, sparsity = general_utils.load_and_format_sae(
             sae_release, sae_object_or_id, device
-        )
+        )  # type: ignore
         sae = sae.to(device=device, dtype=llm_dtype)
 
         sae_result_path = general_utils.get_results_filepath(
