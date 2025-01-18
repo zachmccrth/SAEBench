@@ -1,7 +1,5 @@
 import torch
-import torch.nn as nn
-from typing import Optional
-import sae_bench.custom_saes.custom_sae_config as sae_config
+
 import sae_bench.custom_saes.base_sae as base_sae
 
 
@@ -13,7 +11,7 @@ class IdentitySAE(base_sae.BaseSAE):
         hook_layer: int,
         device: torch.device,
         dtype: torch.dtype,
-        hook_name: Optional[str] = None,
+        hook_name: str | None = None,
     ):
         hook_name = hook_name or f"blocks.{hook_layer}.hook_resid_post"
         super().__init__(d_in, d_in, model_name, hook_layer, device, dtype, hook_name)
@@ -39,7 +37,9 @@ if __name__ == "__main__":
     device = torch.device(
         "mps"
         if torch.backends.mps.is_available()
-        else "cuda" if torch.cuda.is_available() else "cpu"
+        else "cuda"
+        if torch.cuda.is_available()
+        else "cpu"
     )
     dtype = torch.float32
 

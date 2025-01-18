@@ -1,13 +1,14 @@
-import pandas as pd
-import re
-import os
-import torch
-from typing import Optional, Callable, Any, Union, Type
-import time
 import functools
+import os
 import random
-from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
+import re
+import time
+from typing import Any, Callable
+
+import pandas as pd
+import torch
 from sae_lens import SAE
+from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 
 
 def str_to_dtype(dtype_str: str) -> torch.dtype:
@@ -130,7 +131,7 @@ def check_decoder_norms(W_dec: torch.Tensor) -> bool:
 
 def load_and_format_sae(
     sae_release_or_unique_id: str, sae_object_or_sae_lens_id: str | SAE, device: str
-) -> tuple[str, SAE, Optional[torch.Tensor]]:
+) -> tuple[str, SAE, torch.Tensor | None] | None:
     """Handle both pretrained SAEs (identified by string) and custom SAEs (passed as objects)"""
     if isinstance(sae_object_or_sae_lens_id, str):
         sae, _, sparsity = SAE.from_pretrained(
@@ -158,7 +159,9 @@ def get_results_filepath(output_path: str, sae_release: str, sae_id: str) -> str
 
 
 def find_gemmascope_average_l0_sae_names(
-    layer_num: int, gemmascope_release_name: str = "gemma-scope-2b-pt-res", width_num: str = "16k"
+    layer_num: int,
+    gemmascope_release_name: str = "gemma-scope-2b-pt-res",
+    width_num: str = "16k",
 ) -> list[str]:
     df = pd.DataFrame.from_records(
         {k: v.__dict__ for k, v in get_pretrained_saes_directory().items()}
@@ -214,7 +217,7 @@ def retry_with_exponential_backoff(
     max_delay: float = 60.0,
     exponential_base: float = 2.0,
     jitter: bool = True,
-    exceptions: Union[Type[Exception], tuple[Type[Exception], ...]] = Exception,
+    exceptions: type[Exception] | tuple[type[Exception], ...] = Exception,
 ) -> Callable:
     """
     Decorator for retrying a function with exponential backoff.
@@ -244,7 +247,9 @@ def retry_with_exponential_backoff(
                         raise
 
                     # Calculate delay with optional jitter
-                    current_delay = min(delay * (exponential_base**retry_count), max_delay)
+                    current_delay = min(
+                        delay * (exponential_base**retry_count), max_delay
+                    )
                     if jitter:
                         current_delay *= 1 + random.random() * 0.1  # 10% jitter
 

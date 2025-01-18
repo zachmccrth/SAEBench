@@ -1,10 +1,13 @@
+import argparse
+import gc
 import json
 import os
 import random
 import sys
 import time
 from dataclasses import asdict, dataclass
-from typing import Any, Optional, Protocol
+from datetime import datetime
+from typing import Any, Protocol
 
 import torch
 import torch.nn.functional as F
@@ -14,22 +17,19 @@ from loguru import logger
 from sae_lens import SAE, ActivationsStore
 from sae_lens.sae import TopK
 from torch import nn
-import gc
-from transformer_lens import HookedTransformer
-import argparse
-from datetime import datetime
 from tqdm import tqdm
+from transformer_lens import HookedTransformer
 
 from sae_bench.evals.mdl.eval_config import MDLEvalConfig
-from sae_bench.sae_bench_utils import activation_collection, general_utils
 from sae_bench.sae_bench_utils import (
+    activation_collection,
+    general_utils,
     get_eval_uuid,
-    get_sae_lens_version,
     get_sae_bench_version,
+    get_sae_lens_version,
 )
 from sae_bench.sae_bench_utils.sae_selection_utils import (
     get_saes_from_regex,
-    select_saes_multiple_patterns,
 )
 
 EVAL_TYPE = "mdl"
@@ -42,8 +42,8 @@ class Decodable(Protocol):
 def build_bins(
     min_pos_activations_F: torch.Tensor,
     max_activations_F: torch.Tensor,
-    bin_precision: Optional[float] = None,  # 0.2,
-    num_bins: Optional[int] = None,  # 16)
+    bin_precision: float | None = None,  # 0.2,
+    num_bins: int | None = None,  # 16)
 ) -> list[torch.Tensor]:
     if bin_precision is not None and num_bins is not None:
         raise ValueError("Only one of bin_precision or num_bins should be provided")
@@ -160,7 +160,7 @@ def calculate_dl(
         float_entropy_F[feature_idx] = float_entropy
 
     total_entropy_F = (
-        bool_entropy_F.cuda() + bool_prob_F.cuda() * float_entropy_F.cuda()
+        bool_entropy_F.cuda() + bool_prob_F.cuda() * float_entropy_F.cuda()  # type: ignore
     )
 
     description_length = total_entropy_F.sum().item()
@@ -200,7 +200,7 @@ def quantize_features_to_bin_midpoints(
 #     activations_store: ActivationsStore,
 #     sae: SAE,
 #     bins: list[torch.Tensor],
-#     k: Optional[int] = None,
+#     k: int | None = None,
 # ) -> float:
 #     for i in range(10):
 #         x_BSN = activations_store.get_buffer(config.sae_batch_size)
@@ -230,7 +230,7 @@ def check_quantised_features_reach_mse_threshold(
     sae: SAE,
     mse_threshold: float,
     autoencoder: SAE,
-    k: Optional[int] = None,
+    k: int | None = None,
 ) -> tuple[bool, float]:
     mse_losses: list[torch.Tensor] = []
 
@@ -259,7 +259,7 @@ def check_quantised_features_reach_mse_threshold(
     avg_mse_loss = torch.mean(torch.stack(mse_losses))
     within_threshold = bool((avg_mse_loss < mse_threshold).item())
 
-    return within_threshold, mse_loss.item()
+    return within_threshold, mse_loss.item()  # type: ignore
 
 
 class IdentityAE(nn.Module):
@@ -274,7 +274,7 @@ class IdentityAE(nn.Module):
 class MDLEvalResult:
     num_bins: int
     bins: list[torch.Tensor]
-    k: Optional[int]
+    k: int | None
 
     description_length: float
     within_threshold: bool
@@ -289,7 +289,7 @@ class MDLEvalResult:
 class MDLEvalResultsCollection(ListCollection[MDLEvalResult]):
     num_bins: list[int]
     bins: list[list[torch.Tensor]]
-    k: list[Optional[int]]
+    k: list[int] | None
 
     description_length: list[float]
     within_threshold: list[bool]
@@ -367,7 +367,7 @@ def run_eval_single_sae(
     print("k_values", config.k_values)
 
     for num_bins in config.num_bins_values:
-        for k in config.k_values:
+        for k in config.k_values:  # type: ignore
             bins = build_bins(
                 min_pos_activations_F, max_activations_F, num_bins=num_bins
             )
@@ -420,7 +420,7 @@ def run_eval_single_sae(
     for mdl_eval_result in mdl_eval_results:
         result.append(mdl_eval_result.to_dict())
 
-    return result
+    return result  # type: ignore
 
     # minimum_viable_eval_result = mdl_eval_results.pick_minimum_viable()
 
@@ -459,7 +459,7 @@ def run_eval(
     ):
         sae_id, sae, sparsity = general_utils.load_and_format_sae(
             sae_release, sae_object_or_id, device
-        )
+        )  # type: ignore
         sae = sae.to(device=device, dtype=llm_dtype)
 
         sae_result_path = general_utils.get_results_filepath(
@@ -513,9 +513,9 @@ def create_config_and_selected_saes(
     )
 
     if args.llm_batch_size is not None:
-        config.llm_batch_size = args.llm_batch_size
+        config.llm_batch_size = args.llm_batch_size  # type: ignore
     else:
-        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[
+        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[  # type: ignore
             config.model_name
         ]
 
@@ -608,7 +608,7 @@ if __name__ == "__main__":
     os.makedirs(args.output_folder, exist_ok=True)
 
     config = MDLEvalConfig(
-        k_values=[None],
+        k_values=[None],  # type: ignore
         # num_bins_values=[8, 12, 16, 32, 64, 128],
         num_bins_values=[8, 16, 32, 64],
         # num_bins_values=[8],

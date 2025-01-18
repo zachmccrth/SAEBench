@@ -1,10 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
 class MDLEvalConfig:
-    k_values: list[Optional[int]] = field(default_factory=lambda: [16, 24, 32])
+    k_values: list[int] | None = field(default_factory=lambda: [16, 24, 32])
     num_bins_values: list[int] = field(default_factory=lambda: [4, 6, 8, 12, 16, 32])
 
     random_seed: int = 42

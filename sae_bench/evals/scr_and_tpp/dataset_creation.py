@@ -1,22 +1,6 @@
-import gc
-import math
-import os
-import pickle
-import random
-import sys
-from collections import defaultdict
-from typing import Callable, Optional
-
-import datasets
-import einops
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import torch as t
 from datasets import load_dataset
-from sklearn.utils import shuffle
-from torch import nn
-from tqdm import tqdm
 
 import sae_bench.sae_bench_utils.dataset_info as dataset_info
 import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
@@ -127,16 +111,16 @@ def get_train_test_data(
     train_set_size: int,
     test_set_size: int,
     random_seed: int,
-    column1_vals: Optional[tuple[str, str]] = None,
-    column2_vals: Optional[tuple[str, str]] = None,
+    column1_vals: tuple[str, str] | None = None,
+    column2_vals: tuple[str, str] | None = None,
 ) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     if spurious_corr:
         assert "bias_in_bios" in dataset_name or "amazon_reviews" in dataset_name
 
         dataset_name = dataset_name.split("_class_set")[0]
         dataset = load_dataset(dataset_name)
-        train_df = pd.DataFrame(dataset["train"])
-        test_df = pd.DataFrame(dataset["test"])
+        train_df = pd.DataFrame(dataset["train"])  # type: ignore
+        test_df = pd.DataFrame(dataset["test"])  # type: ignore
 
         # 4 is because male / gender for each profession
         minimum_train_samples_per_quadrant = train_set_size // 4
@@ -144,8 +128,8 @@ def get_train_test_data(
 
         train_bios = get_spurious_corr_data(
             train_df,
-            column1_vals,
-            column2_vals,
+            column1_vals,  # type: ignore
+            column2_vals,  # type: ignore
             dataset_name,
             minimum_train_samples_per_quadrant,
             random_seed,
@@ -153,8 +137,8 @@ def get_train_test_data(
 
         test_bios = get_spurious_corr_data(
             test_df,
-            column1_vals,
-            column2_vals,
+            column1_vals,  # type: ignore
+            column2_vals,  # type: ignore
             dataset_name,
             minimum_test_samples_per_quadrant,
             random_seed,

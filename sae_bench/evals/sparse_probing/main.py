@@ -1,16 +1,22 @@
+import argparse
 import gc
 import os
-import shutil
 import random
+import shutil
 import time
 from dataclasses import asdict
-from pydantic import TypeAdapter
+from datetime import datetime
+
 import torch
 from sae_lens import SAE
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
-import argparse
-from datetime import datetime
+
+import sae_bench.evals.sparse_probing.probe_training as probe_training
+import sae_bench.sae_bench_utils.activation_collection as activation_collection
+import sae_bench.sae_bench_utils.dataset_info as dataset_info
+import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
+import sae_bench.sae_bench_utils.general_utils as general_utils
 from sae_bench.evals.sparse_probing.eval_config import SparseProbingEvalConfig
 from sae_bench.evals.sparse_probing.eval_output import (
     EVAL_TYPE_ID_SPARSE_PROBING,
@@ -20,15 +26,10 @@ from sae_bench.evals.sparse_probing.eval_output import (
     SparseProbingResultDetail,
     SparseProbingSaeMetrics,
 )
-import sae_bench.evals.sparse_probing.probe_training as probe_training
-import sae_bench.sae_bench_utils.activation_collection as activation_collection
-import sae_bench.sae_bench_utils.dataset_info as dataset_info
-import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
-import sae_bench.sae_bench_utils.general_utils as general_utils
 from sae_bench.sae_bench_utils import (
     get_eval_uuid,
-    get_sae_lens_version,
     get_sae_bench_version,
+    get_sae_lens_version,
 )
 from sae_bench.sae_bench_utils.sae_selection_utils import (
     get_saes_from_regex,
@@ -57,10 +58,16 @@ def get_dataset_activations(
     test_data = dataset_utils.filter_dataset(test_data, chosen_classes)
 
     train_data = dataset_utils.tokenize_data_dictionary(
-        train_data, model.tokenizer, config.context_length, device
+        train_data,
+        model.tokenizer,  # type: ignore
+        config.context_length,
+        device,
     )
     test_data = dataset_utils.tokenize_data_dictionary(
-        test_data, model.tokenizer, config.context_length, device
+        test_data,
+        model.tokenizer,  # type: ignore
+        config.context_length,
+        device,
     )
 
     all_train_acts_BLD = activation_collection.get_all_llm_activations(
@@ -105,24 +112,26 @@ def run_eval_single_dataset(
 
     if not os.path.exists(activations_path):
         if config.lower_vram_usage:
-            model = model.to(device)
+            model = model.to(device)  # type: ignore
         all_train_acts_BLD, all_test_acts_BLD = get_dataset_activations(
             dataset_name,
             config,
             model,
-            config.llm_batch_size,
+            config.llm_batch_size,  # type: ignore
             layer,
             hook_point,
             device,
         )
         if config.lower_vram_usage:
-            model = model.to("cpu")
+            model = model.to("cpu")  # type: ignore
 
         all_train_acts_BD = activation_collection.create_meaned_model_activations(
             all_train_acts_BLD
         )
 
-        all_test_acts_BD = activation_collection.create_meaned_model_activations(all_test_acts_BLD)
+        all_test_acts_BD = activation_collection.create_meaned_model_activations(
+            all_test_acts_BLD
+        )
 
         # We use GPU here as sklearn.fit is slow on large input dimensions, all other probe training is done with sklearn.fit
         llm_probes, llm_test_accuracies = probe_training.train_probe_on_activations(
@@ -138,10 +147,12 @@ def run_eval_single_dataset(
         llm_results = {"llm_test_accuracy": llm_test_accuracies}
 
         for k in config.k_values:
-            llm_top_k_probes, llm_top_k_test_accuracies = probe_training.train_probe_on_activations(
-                all_train_acts_BD,
-                all_test_acts_BD,
-                select_top_k=k,
+            llm_top_k_probes, llm_top_k_test_accuracies = (
+                probe_training.train_probe_on_activations(
+                    all_train_acts_BD,
+                    all_test_acts_BD,
+                    select_top_k=k,
+                )
             )
             llm_results[f"llm_top_{k}_test_accuracy"] = llm_top_k_test_accuracies
 
@@ -155,7 +166,7 @@ def run_eval_single_dataset(
             torch.save(acts, activations_path)
     else:
         if config.lower_vram_usage:
-            model = model.to("cpu")
+            model = model.to("cpu")  # type: ignore
         print(f"Loading activations from {activations_path}")
         acts = torch.load(activations_path)
         all_train_acts_BLD = acts["train"]
@@ -200,16 +211,20 @@ def run_eval_single_dataset(
         per_class_results_dict[llm_result_key] = llm_result_value
 
     for k in config.k_values:
-        sae_top_k_probes, sae_top_k_test_accuracies = probe_training.train_probe_on_activations(
-            all_sae_train_acts_BF,
-            all_sae_test_acts_BF,
-            select_top_k=k,
+        sae_top_k_probes, sae_top_k_test_accuracies = (
+            probe_training.train_probe_on_activations(
+                all_sae_train_acts_BF,
+                all_sae_test_acts_BF,
+                select_top_k=k,
+            )
         )
         per_class_results_dict[f"sae_top_{k}_test_accuracy"] = sae_top_k_test_accuracies
 
     results_dict = {}
     for key, test_accuracies_dict in per_class_results_dict.items():
-        average_test_acc = sum(test_accuracies_dict.values()) / len(test_accuracies_dict)
+        average_test_acc = sum(test_accuracies_dict.values()) / len(
+            test_accuracies_dict
+        )
         results_dict[key] = average_test_acc
 
     return results_dict, per_class_results_dict
@@ -237,29 +252,32 @@ def run_eval_single_sae(
     dataset_results = {}
     per_class_dict = {}
     for dataset_name in config.dataset_names:
-        dataset_results[f"{dataset_name}_results"], per_class_dict[f"{dataset_name}_results"] = (
-            run_eval_single_dataset(
-                dataset_name,
-                config,
-                sae,
-                model,
-                sae.cfg.hook_layer,
-                sae.cfg.hook_name,
-                device,
-                artifacts_folder,
-                save_activations,
-            )
+        (
+            dataset_results[f"{dataset_name}_results"],
+            per_class_dict[f"{dataset_name}_results"],
+        ) = run_eval_single_dataset(
+            dataset_name,
+            config,
+            sae,
+            model,
+            sae.cfg.hook_layer,
+            sae.cfg.hook_name,
+            device,
+            artifacts_folder,
+            save_activations,
         )
 
-    results_dict = general_utils.average_results_dictionaries(dataset_results, config.dataset_names)
+    results_dict = general_utils.average_results_dictionaries(
+        dataset_results, config.dataset_names
+    )
 
     for dataset_name, dataset_result in dataset_results.items():
         results_dict[f"{dataset_name}"] = dataset_result
 
     if config.lower_vram_usage:
-        model = model.to(device)
+        model = model.to(device)  # type: ignore
 
-    return results_dict, per_class_dict
+    return results_dict, per_class_dict  # type: ignore
 
 
 def run_eval(
@@ -298,10 +316,12 @@ def run_eval(
     ):
         sae_id, sae, sparsity = general_utils.load_and_format_sae(
             sae_release, sae_object_or_id, device
-        )
+        )  # type: ignore
         sae = sae.to(device=device, dtype=llm_dtype)
 
-        sae_result_path = general_utils.get_results_filepath(output_path, sae_release, sae_id)
+        sae_result_path = general_utils.get_results_filepath(
+            output_path, sae_release, sae_id
+        )
 
         if os.path.exists(sae_result_path) and not force_rerun:
             print(f"Skipping {sae_release}_{sae_id} as results already exist")
@@ -382,7 +402,9 @@ def create_config_and_selected_saes(
     if args.llm_batch_size is not None:
         config.llm_batch_size = args.llm_batch_size
     else:
-        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[config.model_name]
+        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[
+            config.model_name
+        ]
 
     if args.llm_dtype is not None:
         config.llm_dtype = args.llm_dtype
@@ -433,7 +455,9 @@ def arg_parser():
         default="eval_results/sparse_probing",
         help="Output folder",
     )
-    parser.add_argument("--force_rerun", action="store_true", help="Force rerun of experiments")
+    parser.add_argument(
+        "--force_rerun", action="store_true", help="Force rerun of experiments"
+    )
     parser.add_argument(
         "--clean_up_activations",
         action="store_true",

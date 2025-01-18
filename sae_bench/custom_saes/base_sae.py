@@ -1,9 +1,9 @@
+from abc import ABC, abstractmethod
+
+import einops
 import torch
 import torch.nn as nn
-from typing import Optional
-import einops
 from transformer_lens import HookedTransformer
-from abc import ABC, abstractmethod
 
 import sae_bench.custom_saes.custom_sae_config as sae_config
 
@@ -17,7 +17,7 @@ class BaseSAE(nn.Module, ABC):
         hook_layer: int,
         device: torch.device,
         dtype: torch.dtype,
-        hook_name: Optional[str] = None,
+        hook_name: str | None = None,
     ):
         super().__init__()
 

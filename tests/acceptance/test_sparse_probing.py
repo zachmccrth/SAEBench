@@ -1,8 +1,10 @@
 import json
+
 import torch
-from sae_bench.evals.sparse_probing.eval_config import SparseProbingEvalConfig
+
 import sae_bench.evals.sparse_probing.main as sparse_probing
 import sae_bench.sae_bench_utils.testing_utils as testing_utils
+from sae_bench.evals.sparse_probing.eval_config import SparseProbingEvalConfig
 from sae_bench.sae_bench_utils.sae_selection_utils import select_saes_multiple_patterns
 
 results_filename = (
@@ -50,7 +52,7 @@ def test_end_to_end_different_seed():
         clean_up_activations=True,
     )
 
-    with open(results_filename, "r") as f:
+    with open(results_filename) as f:
         expected_results = json.load(f)
 
     run_result_metrics = run_results[

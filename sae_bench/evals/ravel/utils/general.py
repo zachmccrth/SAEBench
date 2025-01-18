@@ -1,24 +1,13 @@
-import collections
-import datetime
-import json
 import os
-import pickle as pkl
 import random
-import re
-from typing import Any, Tuple
-from zoneinfo import ZoneInfo
+from typing import Any
 
-import datasets
-import h5py
 import numpy as np
 import torch
-from datasets import Dataset
 from nnsight import NNsight
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from .generate_ravel_instance import RAVELMetadata
-from .generation_utils import generate_batched
 
-REPO_DIR = f"ravel"
+REPO_DIR = "ravel"
 SRC_DIR = os.path.join(REPO_DIR, "src")
 MODEL_DIR = os.path.join(REPO_DIR, "models")
 DATA_DIR = os.path.join(REPO_DIR, "data")
@@ -55,7 +44,7 @@ def set_seed(seed: int):
 
 def load_model_and_tokenizer(
     model_id: str, model_name: str
-) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
+) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
     """
     Load the model and tokenizer.
 
@@ -66,7 +55,7 @@ def load_model_and_tokenizer(
     Returns:
         tuple: The loaded model and tokenizer.
     """
-    with open("/share/u/can/src/hf.txt", "r") as f:
+    with open("/share/u/can/src/hf.txt") as f:
         hf_token = f.read().strip()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

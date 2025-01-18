@@ -1,19 +1,22 @@
-import re
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-import seaborn as sns
-import matplotlib.pyplot as plt
+# type: ignore
+# TODO: get_eval_results and get_core_results are broken, these need to be fixed, then turn type checking back on
+
+
 import json
 import os
+import re
+from collections import defaultdict
 from copy import deepcopy
+from typing import Any
 
-from scipy import stats
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import seaborn as sns
 from matplotlib.colors import Normalize
 from matplotlib.lines import Line2D
-from typing import Optional, Dict, Any
-from collections import defaultdict
+from scipy import stats
 
 # create a dictionary mapping trainer types to marker shapes
 
@@ -80,13 +83,13 @@ def get_single_figure(
     results_path: str,
     core_results_path: str,
     image_base_name: str,
-    k: Optional[int] = None,
-    trainer_markers: Optional[dict[str, str]] = None,
-    title: Optional[str] = None,
+    k: int | None = None,
+    trainer_markers: dict[str, str] | None = None,
+    title: str | None = None,
     title_prefix: str = "",
     plot_type: bool = True,
-    baseline_sae: Optional[tuple[str, str]] = None,
-    baseline_label: Optional[str] = None,
+    baseline_sae: tuple[str, str] | None = None,
+    baseline_label: str | None = None,
 ):
     eval_results = get_eval_results(selected_saes, results_path)
     core_results = get_core_results(selected_saes, core_results_path)
@@ -143,13 +146,13 @@ def plot_results(
     core_filenames: list[str],
     eval_type: str,
     image_base_name: str,
-    k: Optional[int] = None,
-    trainer_markers: Optional[dict[str, str]] = None,
-    trainer_colors: Optional[dict[str, str]] = None,
+    k: int | None = None,
+    trainer_markers: dict[str, str] | None = None,
+    trainer_colors: dict[str, str] | None = None,
     title_prefix: str = "",
     return_fig: bool = False,
-    baseline_sae_path: Optional[str] = None,
-    baseline_label: Optional[str] = None,
+    baseline_sae_path: str | None = None,
+    baseline_label: str | None = None,
 ):
     eval_results = get_eval_results(eval_filenames)
     core_results = get_core_results(core_filenames)
@@ -221,10 +224,10 @@ def plot_best_of_ks_results(
     core_results_path: str,
     image_base_name: str,
     ks: list[int],
-    trainer_markers: Optional[dict[str, str]] = None,
+    trainer_markers: dict[str, str] | None = None,
     title_prefix: str = "",
-    baseline_sae: Optional[tuple[str, str]] = None,
-    baseline_label: Optional[str] = None,
+    baseline_sae: tuple[str, str] | None = None,
+    baseline_label: str | None = None,
 ):
     dummy_k = 0
 
@@ -234,7 +237,9 @@ def plot_best_of_ks_results(
     for sae in eval_results:
         eval_results[sae].update(core_results[sae])
 
-    custom_metric, custom_metric_name = get_custom_metric_key_and_name(results_path, dummy_k)
+    custom_metric, custom_metric_name = get_custom_metric_key_and_name(
+        results_path, dummy_k
+    )
 
     custom_metric = "best_custom_metric"
     custom_metric_name = custom_metric_name.replace(f"Top {dummy_k}", f"Best of {ks}")
@@ -287,7 +292,9 @@ def plot_best_of_ks_results(
     )
 
 
-def get_custom_metric_key_and_name(eval_path: str, k: Optional[int] = None) -> tuple[str, str]:
+def get_custom_metric_key_and_name(
+    eval_path: str, k: int | None = None
+) -> tuple[str, str]:
     if "tpp" in eval_path:
         custom_metric = f"tpp_threshold_{k}_total_metric"
         custom_metric_name = f"TPP Top {k} Metric"
@@ -357,24 +364,34 @@ def get_eval_results(eval_filenames: list[str]) -> dict[str, dict]:
             print(f"File not found: {filepath}")
             continue
 
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             single_sae_results = json.load(f)
 
         filename = os.path.basename(filepath)
         results_key = filename.replace("_eval_results.json", "")
 
         if "tpp" in filepath:
-            eval_results[results_key] = single_sae_results["eval_result_metrics"]["tpp_metrics"]
+            eval_results[results_key] = single_sae_results["eval_result_metrics"][
+                "tpp_metrics"
+            ]
         elif "scr" in filepath:
-            eval_results[results_key] = single_sae_results["eval_result_metrics"]["scr_metrics"]
+            eval_results[results_key] = single_sae_results["eval_result_metrics"][
+                "scr_metrics"
+            ]
         elif "absorption" in filepath:
-            eval_results[results_key] = single_sae_results["eval_result_metrics"]["mean"]
+            eval_results[results_key] = single_sae_results["eval_result_metrics"][
+                "mean"
+            ]
         elif "autointerp" in filepath:
-            eval_results[results_key] = single_sae_results["eval_result_metrics"]["autointerp"]
+            eval_results[results_key] = single_sae_results["eval_result_metrics"][
+                "autointerp"
+            ]
         elif "sparse_probing" in filepath:
             eval_results[results_key] = single_sae_results["eval_result_metrics"]["sae"]
         elif "unlearning" in filepath:
-            eval_results[results_key] = single_sae_results["eval_result_metrics"]["unlearning"]
+            eval_results[results_key] = single_sae_results["eval_result_metrics"][
+                "unlearning"
+            ]
         elif "core" in filepath:
             # core has nested evaluation metrics, so we flatten them out here
             core_results = single_sae_results["eval_result_metrics"]
@@ -394,7 +411,9 @@ def get_eval_results(eval_filenames: list[str]) -> dict[str, dict]:
         eval_results[results_key]["d_sae"] = get_d_sae_string(sae_config["d_sae"])
 
         if "sae_bench" in filename:
-            eval_results[results_key]["train_tokens"] = get_sae_bench_train_tokens(filename)
+            eval_results[results_key]["train_tokens"] = get_sae_bench_train_tokens(
+                filename
+            )
         else:
             eval_results[results_key]["train_tokens"] = 1e-6
 
@@ -408,13 +427,13 @@ def get_core_results(core_filenames: list[str]) -> dict:
             print(f"File not found: {filepath}")
             continue
 
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             single_sae_results = json.load(f)
 
         l0 = single_sae_results["eval_result_metrics"]["sparsity"]["l0"]
-        ce_score = single_sae_results["eval_result_metrics"]["model_performance_preservation"][
-            "ce_loss_score"
-        ]
+        ce_score = single_sae_results["eval_result_metrics"][
+            "model_performance_preservation"
+        ]["ce_loss_score"]
 
         filename = os.path.basename(filepath)
         results_key = filename.replace("_eval_results.json", "")
@@ -477,19 +496,21 @@ def plot_3var_graph(
     results: dict[str, dict[str, float]],
     title: str,
     custom_metric: str,
-    xlims: Optional[tuple[float, float]] = None,
-    ylims: Optional[tuple[float, float]] = None,
+    xlims: tuple[float, float] | None = None,
+    ylims: tuple[float, float] | None = None,
     colorbar_label: str = "Average Diff",
-    output_filename: Optional[str] = None,
+    output_filename: str | None = None,
     legend_location: str = "lower right",
     x_axis_key: str = "l0",
     y_axis_key: str = "ce_loss_score",
-    trainer_markers: Optional[dict[str, str]] = None,
+    trainer_markers: dict[str, str] | None = None,
 ):
     if not trainer_markers:
         trainer_markers = TRAINER_MARKERS
 
-    trainer_markers, _ = update_trainer_markers_and_colors(results, trainer_markers, TRAINER_COLORS)
+    trainer_markers, _ = update_trainer_markers_and_colors(
+        results, trainer_markers, TRAINER_COLORS
+    )
 
     # Extract data from results
     l0_values = [data[x_axis_key] for data in results.values()]
@@ -545,7 +566,7 @@ def plot_3var_graph(
         labels.append(trainer_label)
 
     # Add colorbar
-    cbar = fig.colorbar(scatter, ax=ax, label=colorbar_label)
+    fig.colorbar(scatter, ax=ax, label=colorbar_label)  # type: ignore
 
     # Set labels and title
     ax.set_xlabel("L0 (Sparsity)")
@@ -571,9 +592,9 @@ def plot_3var_graph(
 def plot_interactive_3var_graph(
     results: dict[str, dict[str, float]],
     custom_color_metric: str,
-    xlims: Optional[tuple[float, float]] = None,
-    y_lims: Optional[tuple[float, float]] = None,
-    output_filename: Optional[str] = None,
+    xlims: tuple[float, float] | None = None,
+    y_lims: tuple[float, float] | None = None,
+    output_filename: str | None = None,
     x_axis_key: str = "l0",
     y_axis_key: str = "ce_loss_score",
     title: str = "",
@@ -642,15 +663,14 @@ def plot_2var_graph(
     custom_metric: str,
     title: str = "L0 vs Custom Metric",
     y_label: str = "Custom Metric",
-    xlims: Optional[tuple[float, float]] = None,
-    ylims: Optional[tuple[float, float]] = None,
-    output_filename: Optional[str] = None,
-    legend_location: str = "lower right",
-    baseline_value: Optional[float] = None,
-    baseline_label: Optional[str] = None,
+    xlims: tuple[float, float] | None = None,
+    ylims: tuple[float, float] | None = None,
+    output_filename: str | None = None,
+    baseline_value: float | None = None,
+    baseline_label: str | None = None,
     x_axis_key: str = "l0",
-    trainer_markers: Optional[dict[str, str]] = None,
-    trainer_colors: Optional[dict[str, str]] = None,
+    trainer_markers: dict[str, str] | None = None,
+    trainer_colors: dict[str, str] | None = None,
     return_fig: bool = False,
     connect_points: bool = False,  # New parameter to control line connections
 ):
@@ -696,7 +716,7 @@ def plot_2var_graph(
             )
 
         # Plot data points
-        scatter = ax.scatter(
+        ax.scatter(
             l0_values,
             custom_metric_values,
             marker=marker,
@@ -709,7 +729,12 @@ def plot_2var_graph(
 
         # Create custom legend handle with both marker and color
         legend_handle = plt.scatter(
-            [], [], marker=marker, s=100, color=trainer_colors[trainer], edgecolor="black"
+            [],
+            [],
+            marker=marker,
+            s=100,
+            color=trainer_colors[trainer],
+            edgecolor="black",
         )
         handles.append(legend_handle)
 
@@ -730,7 +755,9 @@ def plot_2var_graph(
     if baseline_value is not None:
         ax.axhline(baseline_value, color="red", linestyle="--", label=baseline_label)
         labels.append(baseline_label)
-        handles.append(Line2D([0], [0], color="red", linestyle="--", label=baseline_label))
+        handles.append(
+            Line2D([0], [0], color="red", linestyle="--", label=baseline_label)
+        )
 
     # Place legend outside the plot on the right
     ax.legend(handles, labels, loc="center left", bbox_to_anchor=(1, 0.5))
@@ -758,15 +785,15 @@ def plot_2var_graph_dict_size(
     custom_metric: str,
     title: str = "L0 vs Custom Metric",
     y_label: str = "Custom Metric",
-    xlims: Optional[tuple[float, float]] = None,
-    ylims: Optional[tuple[float, float]] = None,
-    output_filename: Optional[str] = None,
+    xlims: tuple[float, float] | None = None,
+    ylims: tuple[float, float] | None = None,
+    output_filename: str | None = None,
     legend_location: str = "lower right",
-    baseline_value: Optional[float] = None,
-    baseline_label: Optional[str] = None,
+    baseline_value: float | None = None,
+    baseline_label: str | None = None,
     x_axis_key: str = "l0",
     return_fig: bool = False,
-    trainer_markers: Optional[dict[str, str]] = None,
+    trainer_markers: dict[str, str] | None = None,
 ):
     if not trainer_markers:
         trainer_markers = TRAINER_MARKERS
@@ -774,7 +801,6 @@ def plot_2var_graph_dict_size(
     # Extract data
     l0_values = [data[x_axis_key] for data in results.values()]
     custom_metric_values = [data[custom_metric] for data in results.values()]
-    dict_sizes = [data["d_sae"] for data in results.values()]
 
     # Create the scatter plot
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -783,14 +809,18 @@ def plot_2var_graph_dict_size(
     possible_sizes = ["4k", "16k", "65k", "131k", "1M"]
 
     # Create color map with more exaggerated differences for 3 colors
-    colors = [plt.cm.Reds(x) for x in [0.1, 0.5, 0.9]]  # Light, medium, dark red
+    colors = [plt.cm.Reds(x) for x in [0.1, 0.5, 0.9]]  # type: ignore # Light, medium, dark red
 
     # Get unique dict sizes present in the data while preserving order from possible_sizes
     unique_sizes = [
-        size for size in possible_sizes if size in set(v["d_sae"] for v in results.values())
+        size
+        for size in possible_sizes
+        if size in set(v["d_sae"] for v in results.values())
     ]
 
-    assert len(unique_sizes) <= len(colors), "Too many unique dictionary sizes for color map"
+    assert len(unique_sizes) <= len(colors), (
+        "Too many unique dictionary sizes for color map"
+    )
 
     size_to_color = {size: colors[i] for i, size in enumerate(unique_sizes)}
 
@@ -808,8 +838,8 @@ def plot_2var_graph_dict_size(
 
         # Plot data points with the assigned marker and color
         for l0, metric, sae_class in zip(l0_values, custom_metric_values, sae_classes):
-            marker = trainer_markers[sae_class]
-            scatter = ax.scatter(
+            marker = trainer_markers[sae_class]  # type: ignore
+            ax.scatter(
                 l0,
                 metric,
                 marker=marker,
@@ -833,7 +863,9 @@ def plot_2var_graph_dict_size(
     if baseline_value:
         ax.axhline(baseline_value, color="red", linestyle="--", label=baseline_label)
         labels.append(baseline_label)
-        handles.append(Line2D([0], [0], color="red", linestyle="--", label=baseline_label))
+        handles.append(
+            Line2D([0], [0], color="red", linestyle="--", label=baseline_label)
+        )
 
     ax.legend(handles, labels, loc=legend_location)
 
@@ -858,9 +890,9 @@ def plot_steps_vs_average_diff(
     results_dict: dict,
     steps_key: str = "train_tokens",
     avg_diff_key: str = "average_diff",
-    title: Optional[str] = None,
-    y_label: Optional[str] = None,
-    output_filename: Optional[str] = None,
+    title: str | None = None,
+    y_label: str | None = None,
+    output_filename: str | None = None,
 ):
     # Initialize a defaultdict to store data for each trainer
     trainer_data = defaultdict(lambda: {"train_tokens": [], "metric_scores": []})
@@ -870,7 +902,9 @@ def plot_steps_vs_average_diff(
     # Extract data from the dictionary
     for key, value in results_dict.items():
         # Extract trainer number from the key
-        trainer = key.split("/")[-1].split("_")[1]  # Assuming format like "trainer_1_..."
+        trainer = key.split("/")[-1].split("_")[
+            1
+        ]  # Assuming format like "trainer_1_..."
         layer = key.split("/")[-2].split("_")[-2]
 
         if "topk_ctx128" in key:
@@ -973,7 +1007,7 @@ def plot_steps_vs_average_diff(
 def plot_correlation_heatmap(
     plotting_results: dict[str, dict[str, float]],
     metric_names: list[str],
-    ae_names: Optional[list[str]] = None,
+    ae_names: list[str] | None = None,
     title: str = "Metric Correlation Heatmap",
     output_filename: str = None,
     figsize: tuple = (12, 10),
@@ -1017,11 +1051,11 @@ def plot_correlation_scatter(
     plotting_results: dict[str, dict[str, float]],
     metric_x: str,
     metric_y: str,
-    x_label: Optional[str] = None,
-    y_label: Optional[str] = None,
-    ae_names: Optional[list[str]] = None,
+    x_label: str | None = None,
+    y_label: str | None = None,
+    ae_names: list[str] | None = None,
     title: str = "Metric Comparison Scatter Plot",
-    output_filename: Optional[str] = None,
+    output_filename: str | None = None,
     figsize: tuple = (10, 8),
 ):
     # If ae_names is not provided, use all ae_names from plotting_results
@@ -1050,11 +1084,11 @@ def plot_correlation_scatter(
 
     # Calculate correlation coefficients
     r, p_value = stats.pearsonr(x_values, y_values)
-    r_squared = r**2
+    r_squared = r**2  # type: ignore
 
     # Create the scatter plot
     plt.figure(figsize=figsize)
-    scatter = sns.scatterplot(x=x_values, y=y_values, label="SAE", color="blue")
+    sns.scatterplot(x=x_values, y=y_values, label="SAE", color="blue")
 
     if x_label is None:
         x_label = metric_x
@@ -1067,7 +1101,9 @@ def plot_correlation_scatter(
     plt.title(title)
 
     # Add a trend line
-    sns.regplot(x=x_values, y=y_values, scatter=False, color="red", label=f"r = {r:.4f}")
+    sns.regplot(
+        x=x_values, y=y_values, scatter=False, color="red", label=f"r = {r:.4f}"
+    )
 
     plt.legend()
 
@@ -1089,9 +1125,9 @@ def plot_training_steps(
     results_dict: dict,
     metric_key: str,
     steps_key: str = "train_tokens",
-    title: Optional[str] = None,
-    y_label: Optional[str] = None,
-    output_filename: Optional[str] = None,
+    title: str | None = None,
+    y_label: str | None = None,
+    output_filename: str | None = None,
     break_fraction: float = 0.15,  # Parameter to control break position
 ):
     # Initialize a defaultdict to store data for each trainer
@@ -1205,7 +1241,8 @@ def plot_training_steps(
         y_label = metric_key.replace("_", " ").capitalize()
     ax1.set_ylabel(y_label)
     fig.text(0.5, 0.01, "Training Steps", ha="center", va="center")
-    fig.suptitle(title)
+    if title is not None:
+        fig.suptitle(title)
 
     # Adjust x-axis ticks
     # ax1.set_xticks([0])

@@ -1,5 +1,6 @@
-from pydantic.dataclasses import dataclass
 from pydantic import Field
+from pydantic.dataclasses import dataclass
+
 from sae_bench.evals.base_eval_output import BaseEvalConfig
 
 

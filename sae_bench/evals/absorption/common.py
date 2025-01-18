@@ -3,8 +3,9 @@ Shared helpers for experiments
 """
 
 import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Callable, Iterable, Literal
+from typing import Callable, Literal
 
 import numpy as np
 import pandas as pd
@@ -132,7 +133,7 @@ def load_probe_data_split(
     activations = torch.from_numpy(np_data[f"X_{split}"]).to(device, dtype=dtype)
     labels = np_data[f"y_{split}"].tolist()
     return _parse_probe_data_split(
-        model.tokenizer,
+        model.tokenizer,  # type: ignore
         activations,
         split_labels=labels,
         df=df,  # type: ignore

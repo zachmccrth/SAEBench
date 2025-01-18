@@ -1,7 +1,8 @@
-from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
-from tqdm.auto import tqdm
 import re
+
+from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 from tabulate import tabulate
+from tqdm.auto import tqdm
 
 
 def all_loadable_saes() -> list[tuple[str, str, float, float]]:
@@ -11,12 +12,16 @@ def all_loadable_saes() -> list[tuple[str, str, float, float]]:
         for sae_name in lookup.saes_map.keys():
             expected_var_explained = lookup.expected_var_explained[sae_name]
             expected_l0 = lookup.expected_l0[sae_name]
-            all_loadable_saes.append((release, sae_name, expected_var_explained, expected_l0))
+            all_loadable_saes.append(
+                (release, sae_name, expected_var_explained, expected_l0)
+            )
 
     return all_loadable_saes
 
 
-def get_saes_from_regex(sae_regex_pattern: str, sae_id_pattern: str) -> list[tuple[str, str]]:
+def get_saes_from_regex(
+    sae_regex_pattern: str, sae_id_pattern: str
+) -> list[tuple[str, str]]:
     """
     Filter and retrieve SAEs based on regex patterns for release names and SAE IDs.
 
@@ -32,7 +37,7 @@ def get_saes_from_regex(sae_regex_pattern: str, sae_id_pattern: str) -> list[tup
         (release_name, sae_id) for SAEs matching both regex patterns.
 
     Example:
-        >>> get_saes_from_regex(r"sae_bench_pythia.*", r"blocks\.4\.hook_resid_pre.*")
+        >>> get_saes_from_regex(r"sae_bench_pythia.*", r"blocks\\.4\\.hook_resid_pre.*")
         [('sae_bench_pythia70m_sweep_standard_ctx128_0712', 'blocks.4.hook_resid_pre__trainer_0'),
          ('sae_bench_pythia70m_sweep_standard_ctx128_0712', 'blocks.4.hook_resid_pre__trainer_1'), ...]
     """
@@ -68,7 +73,7 @@ def print_all_sae_releases():
 
     print(
         tabulate(
-            sorted(metadata_rows, key=lambda x: x[0]),
+            sorted(metadata_rows, key=lambda x: x[0]),  # type: ignore
             headers=["model", "release", "repo_id", "n_saes"],
             tablefmt="simple_outline",
         )
@@ -87,7 +92,7 @@ def print_release_details(release_name: str):
         if isinstance(value, dict):
             if not value:
                 return "{}"
-            return "{{{0!r}: {1!r}, ...}}".format(*next(iter(value.items())))
+            return "{{{0!r}: {1!r}, ...}}".format(*next(iter(value.items())))  # noqa: UP030
         return repr(value)
 
     release = get_pretrained_saes_directory()[release_name]
@@ -108,7 +113,9 @@ def select_saes_multiple_patterns(
     assert len(sae_regex_patterns) == len(sae_block_patterns), "Length mismatch"
 
     selected_saes = []
-    for sae_regex_pattern, sae_block_pattern in zip(sae_regex_patterns, sae_block_patterns):
+    for sae_regex_pattern, sae_block_pattern in zip(
+        sae_regex_patterns, sae_block_patterns
+    ):
         selected_saes.extend(get_saes_from_regex(sae_regex_pattern, sae_block_pattern))
     assert len(selected_saes) > 0, "No SAEs selected"
 

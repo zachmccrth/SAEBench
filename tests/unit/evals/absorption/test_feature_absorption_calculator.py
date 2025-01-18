@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 import torch
 from sae_lens import SAE
@@ -13,7 +11,6 @@ from sae_bench.evals.absorption.feature_absorption_calculator import (
 
 def test_FeatureAbsorptionCalculator_validate_prompts_are_same_length_errors_if_prompts_are_variable_lengths(
     gpt2_model: HookedTransformer,
-    gpt2_l4_sae: SAE,
 ):
     words = [" cat", " antelope", " fish"]
     calculator = FeatureAbsorptionCalculator(

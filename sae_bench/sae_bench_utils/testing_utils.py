@@ -1,17 +1,15 @@
-import json
-from datetime import datetime
-import uuid
-from typing import Dict, Optional, Set, Type
-from beartype import beartype
 from argparse import ArgumentParser
+
+from beartype import beartype
 from pydantic import TypeAdapter
+
 from sae_bench.evals.base_eval_output import BaseEvalOutput
 
 
 @beartype
 def validate_eval_output_format_file(
     output_path: str,
-    eval_output_type: Type[BaseEvalOutput],
+    eval_output_type: type[BaseEvalOutput],
 ) -> None:
     """Validates that an eval output JSON file matches the required format
 
@@ -26,7 +24,7 @@ def validate_eval_output_format_file(
     """
 
     try:
-        with open(output_path, "r") as f:
+        with open(output_path) as f:
             output_str = f.read()
     except FileNotFoundError:
         raise FileNotFoundError(
@@ -38,7 +36,7 @@ def validate_eval_output_format_file(
 
 def validate_eval_output_format_str(
     output_str: str,
-    eval_output_type: Type[BaseEvalOutput],
+    eval_output_type: type[BaseEvalOutput],
 ) -> None:
     """Validates that an eval output string matches the required format
 
@@ -55,8 +53,8 @@ def validate_eval_output_format_str(
 
 def validate_eval_cli_interface(
     parser: ArgumentParser,
-    eval_config_cls: Optional[object] = None,
-    additional_required_args: Optional[Set[str]] = None,
+    eval_config_cls: object | None = None,
+    additional_required_args: set[str] | None = None,
 ) -> None:
     """Validates that an eval's CLI interface meets the requirements from eval_template.ipynb
 
@@ -91,7 +89,7 @@ def validate_eval_cli_interface(
 
     # If config class provided, verify CLI args match config fields
     if eval_config_cls:
-        config_fields = {field for field in eval_config_cls.__dataclass_fields__}
+        config_fields = {field for field in eval_config_cls.__dataclass_fields__}  # type: ignore
         # model_name is a special case that's both common and in config
         config_fields.add("model_name")
 
@@ -102,26 +100,26 @@ def validate_eval_cli_interface(
         missing_config_args = config_fields - eval_specific_args
         extra_cli_args = eval_specific_args - config_fields
 
-        assert (
-            not missing_config_args
-        ), f"Config fields missing from CLI args: {missing_config_args}"
+        assert not missing_config_args, (
+            f"Config fields missing from CLI args: {missing_config_args}"
+        )
         assert not extra_cli_args, f"CLI args not present in config: {extra_cli_args}"
 
-        assert (
-            not missing_config_args
-        ), f"Config fields missing from CLI args: {missing_config_args}"
+        assert not missing_config_args, (
+            f"Config fields missing from CLI args: {missing_config_args}"
+        )
         assert not extra_cli_args, f"CLI args not present in config: {extra_cli_args}"
 
     # Verify help text exists for all arguments
     for action in parser._actions:
         if action.dest != "help":
-            assert (
-                action.help is not None and action.help != ""
-            ), f"Missing help text for argument: {action.dest}"
+            assert action.help is not None and action.help != "", (
+                f"Missing help text for argument: {action.dest}"
+            )
         if action.dest != "help":
-            assert (
-                action.help is not None and action.help != ""
-            ), f"Missing help text for argument: {action.dest}"
+            assert action.help is not None and action.help != "", (
+                f"Missing help text for argument: {action.dest}"
+            )
 
 
 def compare_dicts_within_tolerance(
@@ -131,7 +129,7 @@ def compare_dicts_within_tolerance(
     path: str = "",
     all_diffs=None,
     ignore_keys: tuple[str] = ("random_seed",),
-    keys_to_compare: Optional[list[str]] = None,
+    keys_to_compare: list[str] | None = None,
 ):
     """
     Recursively compare two nested dictionaries and assert that all numeric values
@@ -150,9 +148,9 @@ def compare_dicts_within_tolerance(
     if all_diffs is None:
         all_diffs = []
 
-    assert isinstance(
-        actual, type(expected)
-    ), f"Type mismatch at {path}: {type(actual)} != {type(expected)}"
+    assert isinstance(actual, type(expected)), (
+        f"Type mismatch at {path}: {type(actual)} != {type(expected)}"
+    )
 
     if not isinstance(actual, dict) and keys_to_compare is not None:
         if path.split(".")[-1] not in keys_to_compare:
@@ -199,9 +197,9 @@ def compare_dicts_within_tolerance(
             print(f"Global mean difference: {mean_diff}")
             print(f"Global max difference: {max_diff}")
 
-            assert (
-                max_diff <= tolerance
-            ), f"Value mismatch at {path}: {actual} not within {tolerance} of {expected}"
+            assert max_diff <= tolerance, (
+                f"Value mismatch at {path}: {actual} not within {tolerance} of {expected}"
+            )
 
         else:
             print("No numeric differences found.")

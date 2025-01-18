@@ -1,18 +1,24 @@
-from dataclasses import asdict
+import argparse
 import gc
+import os
 import statistics
-from sae_lens import SAE
-import torch
-from tqdm import tqdm
+import time
+from dataclasses import asdict
+from datetime import datetime
+
 import pandas as pd
+import torch
+from sae_lens import SAE
+from tqdm import tqdm
+from transformer_lens import HookedTransformer
 
 from sae_bench.evals.absorption.eval_config import AbsorptionEvalConfig
 from sae_bench.evals.absorption.eval_output import (
     EVAL_TYPE_ID_ABSORPTION,
     AbsorptionEvalOutput,
+    AbsorptionMeanMetrics,
     AbsorptionMetricCategories,
     AbsorptionResultDetail,
-    AbsorptionMeanMetrics,
 )
 from sae_bench.evals.absorption.feature_absorption import (
     run_feature_absortion_experiment,
@@ -22,15 +28,10 @@ from sae_bench.sae_bench_utils import (
     activation_collection,
     general_utils,
     get_eval_uuid,
-    get_sae_lens_version,
     get_sae_bench_version,
+    get_sae_lens_version,
 )
 from sae_bench.sae_bench_utils.sae_selection_utils import get_saes_from_regex
-from transformer_lens import HookedTransformer
-from datetime import datetime
-import os
-import time
-import argparse
 
 
 def run_eval(
@@ -46,7 +47,9 @@ def run_eval(
     """
 
     if "gemma" not in config.model_name:
-        print("\n\n\nWARNING: We recommend running this eval on LLMS >= 2B parameters\n\n\n")
+        print(
+            "\n\n\nWARNING: We recommend running this eval on LLMS >= 2B parameters\n\n\n"
+        )
 
     eval_instance_id = get_eval_uuid()
     sae_lens_version = get_sae_lens_version()
@@ -65,10 +68,12 @@ def run_eval(
     ):
         sae_id, sae, sparsity = general_utils.load_and_format_sae(
             sae_release, sae_object_or_id, device
-        )
+        )  # type: ignore
         sae = sae.to(device=device, dtype=llm_dtype)
 
-        sae_result_path = general_utils.get_results_filepath(output_path, sae_release, sae_id)
+        sae_result_path = general_utils.get_results_filepath(
+            output_path, sae_release, sae_id
+        )
 
         if os.path.exists(sae_result_path) and not force_rerun:
             print(f"Skipping {sae_release}_{sae_id} as results already exist")
@@ -97,7 +102,9 @@ def run_eval(
         k_sparse_probing_file = k_sparse_probing_file.replace("/", "_")
         k_sparse_probing_path = os.path.join(artifacts_folder, k_sparse_probing_file)
         os.makedirs(os.path.dirname(k_sparse_probing_path), exist_ok=True)
-        k_sparse_probing_results.to_json(k_sparse_probing_path, orient="records", indent=4)
+        k_sparse_probing_results.to_json(
+            k_sparse_probing_path, orient="records", indent=4
+        )
 
         raw_df = run_feature_absortion_experiment(
             model=model,
@@ -126,12 +133,12 @@ def run_eval(
             num_split_features.append(row["num_split_feats"])
             eval_result_details.append(
                 AbsorptionResultDetail(
-                    first_letter=letter,
-                    mean_absorption_fraction=row["mean_absorption_fraction"],
-                    full_absorption_rate=row["full_absorption_rate"],
-                    num_full_absorption=row["num_full_absorption"],
-                    num_probe_true_positives=row["num_probe_true_positives"],
-                    num_split_features=row["num_split_feats"],
+                    first_letter=letter,  # type: ignore
+                    mean_absorption_fraction=row["mean_absorption_fraction"],  # type: ignore
+                    full_absorption_rate=row["full_absorption_rate"],  # type: ignore
+                    num_full_absorption=row["num_full_absorption"],  # type: ignore
+                    num_probe_true_positives=row["num_probe_true_positives"],  # type: ignore
+                    num_split_features=row["num_split_feats"],  # type: ignore
                 )
             )
 
@@ -142,11 +149,17 @@ def run_eval(
             datetime_epoch_millis=int(datetime.now().timestamp() * 1000),
             eval_result_metrics=AbsorptionMetricCategories(
                 mean=AbsorptionMeanMetrics(
-                    mean_absorption_fraction_score=statistics.mean(mean_absorption_fractions),
+                    mean_absorption_fraction_score=statistics.mean(
+                        mean_absorption_fractions
+                    ),
                     mean_full_absorption_score=statistics.mean(full_absorption_rates),
                     mean_num_split_features=statistics.mean(num_split_features),
-                    std_dev_absorption_fraction_score=statistics.stdev(mean_absorption_fractions),
-                    std_dev_full_absorption_score=statistics.stdev(full_absorption_rates),
+                    std_dev_absorption_fraction_score=statistics.stdev(
+                        mean_absorption_fractions
+                    ),
+                    std_dev_full_absorption_score=statistics.stdev(
+                        full_absorption_rates
+                    ),
                     std_dev_num_split_features=statistics.stdev(num_split_features),
                 )
             ),
@@ -280,7 +293,9 @@ def arg_parser():
         help="L1 decay for k-sparse probes.",
     )
 
-    parser.add_argument("--force_rerun", action="store_true", help="Force rerun of experiments")
+    parser.add_argument(
+        "--force_rerun", action="store_true", help="Force rerun of experiments"
+    )
 
     return parser
 
@@ -302,7 +317,9 @@ def create_config_and_selected_saes(
     if args.llm_batch_size is not None:
         config.llm_batch_size = args.llm_batch_size
     else:
-        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[config.model_name]
+        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[
+            config.model_name
+        ]
 
     if args.llm_dtype is not None:
         config.llm_dtype = args.llm_dtype
@@ -343,7 +360,9 @@ if __name__ == "__main__":
     os.makedirs(args.output_folder, exist_ok=True)
 
     # run the evaluation on all selected SAEs
-    results_dict = run_eval(config, selected_saes, device, args.output_folder, args.force_rerun)
+    results_dict = run_eval(
+        config, selected_saes, device, args.output_folder, args.force_rerun
+    )
 
     end_time = time.time()
 

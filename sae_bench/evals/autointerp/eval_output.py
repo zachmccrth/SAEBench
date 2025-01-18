@@ -1,11 +1,12 @@
-from pydantic.dataclasses import dataclass
 from pydantic import ConfigDict, Field
+from pydantic.dataclasses import dataclass
+
 from sae_bench.evals.autointerp.eval_config import AutoInterpEvalConfig
 from sae_bench.evals.base_eval_output import (
+    DEFAULT_DISPLAY,
     BaseEvalOutput,
     BaseMetricCategories,
     BaseMetrics,
-    DEFAULT_DISPLAY,
     BaseResultDetail,
 )
 
@@ -37,7 +38,7 @@ class AutoInterpMetricCategories(BaseMetricCategories):
 # Define the eval output
 @dataclass(config=ConfigDict(title="AutoInterp"))
 class AutoInterpEvalOutput(
-    BaseEvalOutput[AutoInterpEvalConfig, AutoInterpMetricCategories, BaseResultDetail]
+    BaseEvalOutput[AutoInterpEvalConfig, AutoInterpMetricCategories, BaseResultDetail]  # type: ignore
 ):
     """
     An evaluation of the interpretability of SAE latents. This evaluation is based on Eleuther's 'Open Source Automated Interpretability for Sparse Autoencoder Features'

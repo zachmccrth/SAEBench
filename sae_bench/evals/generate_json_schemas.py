@@ -1,12 +1,12 @@
-import os
 import json
-from typing import Type
+import os
 
-from sae_bench.evals.base_eval_output import BaseEvalOutput
 from pydantic import TypeAdapter
 
+from sae_bench.evals.base_eval_output import BaseEvalOutput
 
-def generate_json_schema(eval_output: Type[BaseEvalOutput], output_file: str):
+
+def generate_json_schema(eval_output: type[BaseEvalOutput], output_file: str):
     schema = TypeAdapter(eval_output).json_schema()
     with open(output_file, "w") as f:
         json.dump(schema, f, indent=2)

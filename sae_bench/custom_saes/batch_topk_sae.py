@@ -1,8 +1,8 @@
+import json
+
 import torch
 import torch.nn as nn
 from huggingface_hub import hf_hub_download
-import json
-from typing import Optional
 
 import sae_bench.custom_saes.base_sae as base_sae
 
@@ -17,7 +17,7 @@ class BatchTopKSAE(base_sae.BaseSAE):
         hook_layer: int,
         device: torch.device,
         dtype: torch.dtype,
-        hook_name: Optional[str] = None,
+        hook_name: str | None = None,
     ):
         hook_name = hook_name or f"blocks.{hook_layer}.hook_resid_post"
         super().__init__(d_in, d_sae, model_name, hook_layer, device, dtype, hook_name)
@@ -27,18 +27,24 @@ class BatchTopKSAE(base_sae.BaseSAE):
 
         # BatchTopK requires a global threshold to use during inference. Must be positive.
         self.use_threshold = True
-        self.register_buffer("threshold", torch.tensor(-1.0, dtype=dtype, device=device))
+        self.register_buffer(
+            "threshold", torch.tensor(-1.0, dtype=dtype, device=device)
+        )
 
     def encode(self, x: torch.Tensor):
         """Note: x can be either shape (B, F) or (B, L, F)"""
-        post_relu_feat_acts_BF = nn.functional.relu((x - self.b_dec) @ self.W_enc + self.b_enc)
+        post_relu_feat_acts_BF = nn.functional.relu(
+            (x - self.b_dec) @ self.W_enc + self.b_enc
+        )
 
         if self.use_threshold:
             if self.threshold < 0:
                 raise ValueError(
                     "Threshold is not set. The threshold must be set to use it during inference"
                 )
-            encoded_acts_BF = post_relu_feat_acts_BF * (post_relu_feat_acts_BF > self.threshold)
+            encoded_acts_BF = post_relu_feat_acts_BF * (
+                post_relu_feat_acts_BF > self.threshold
+            )
             return encoded_acts_BF
 
         post_topk = post_relu_feat_acts_BF.topk(self.k, sorted=False, dim=-1)
@@ -47,7 +53,9 @@ class BatchTopKSAE(base_sae.BaseSAE):
         top_indices_BK = post_topk.indices
 
         buffer_BF = torch.zeros_like(post_relu_feat_acts_BF)
-        encoded_acts_BF = buffer_BF.scatter_(dim=-1, index=top_indices_BK, src=tops_acts_BK)
+        encoded_acts_BF = buffer_BF.scatter_(
+            dim=-1, index=top_indices_BK, src=tops_acts_BK
+        )
         return encoded_acts_BF
 
     def decode(self, feature_acts: torch.Tensor):
@@ -65,7 +73,7 @@ def load_dictionary_learning_batch_topk_sae(
     model_name: str,
     device: torch.device,
     dtype: torch.dtype,
-    layer: Optional[int] = None,
+    layer: int | None = None,
     local_dir: str = "downloaded_saes",
 ) -> BatchTopKSAE:
     assert "ae.pt" in filename
@@ -87,7 +95,7 @@ def load_dictionary_learning_batch_topk_sae(
         local_dir=local_dir,
     )
 
-    with open(path_to_config, "r") as f:
+    with open(path_to_config) as f:
         config = json.load(f)
 
     if layer is not None:
@@ -128,7 +136,7 @@ def load_dictionary_learning_batch_topk_sae(
         d_sae=renamed_params["b_enc"].shape[0],
         k=k,
         model_name=model_name,
-        hook_layer=layer,
+        hook_layer=layer,  # type: ignore
         device=device,
         dtype=dtype,
     )
@@ -159,7 +167,7 @@ def load_dictionary_learning_matryoshka_batch_topk_sae(
     model_name: str,
     device: torch.device,
     dtype: torch.dtype,
-    layer: Optional[int] = None,
+    layer: int | None = None,
     local_dir: str = "downloaded_saes",
 ) -> BatchTopKSAE:
     assert "ae.pt" in filename
@@ -181,7 +189,7 @@ def load_dictionary_learning_matryoshka_batch_topk_sae(
         local_dir=local_dir,
     )
 
-    with open(path_to_config, "r") as f:
+    with open(path_to_config) as f:
         config = json.load(f)
 
     if layer is not None:
@@ -205,7 +213,7 @@ def load_dictionary_learning_matryoshka_batch_topk_sae(
         d_sae=pt_params["b_enc"].shape[0],
         k=k,
         model_name=model_name,
-        hook_layer=layer,
+        hook_layer=layer,  # type: ignore
         device=device,
         dtype=dtype,
     )
@@ -242,7 +250,12 @@ if __name__ == "__main__":
     hook_name = f"blocks.{layer}.hook_resid_post"
 
     sae = load_dictionary_learning_batch_topk_sae(
-        repo_id, filename, model_name, device, dtype, layer=layer
+        repo_id,
+        filename,
+        model_name,
+        device,  # type: ignore
+        dtype,
+        layer=layer,
     )
     sae.test_sae(model_name)
 

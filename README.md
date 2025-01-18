@@ -114,6 +114,28 @@ To install the development dependencies, run:
 poetry install
 ```
 
+### Linting and Formatting
+
+This project uses [Ruff](https://github.com/astral-sh/ruff) for linting and formatting. To run linting, run:
+
+```
+make lint
+```
+
+To run formatting, run:
+
+```
+make format
+```
+
+To run type checking, run:
+
+```
+make check-type
+```
+
+### Testing
+
 Unit tests can be run with:
 
 ```
@@ -129,3 +151,30 @@ poetry run pytest tests/acceptance
 ```
 
 These tests are expensive and will not be run automatically in CI, but are worth running manually before large changes.
+
+### Running all CI checks locally
+
+Before submitting a PR, run:
+
+```
+make check-ci
+```
+
+This will run linting, formatting, type checking, and unit tests. If these all pass, your PR should be good to go!
+
+### Configuring VSCode for auto-formatting
+
+If you use VSCode, install the Ruff plugin, and add the following to your `.vscode/settings.json` file:
+
+```json
+{
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  }
+}
+```

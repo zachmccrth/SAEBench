@@ -11,7 +11,6 @@ import os
 import random
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -44,10 +43,10 @@ class Prompt:
     entity: str
     context_split: str
     entity_split: str
-    input_ids: Optional[torch.Tensor] = None
-    attention_mask: Optional[torch.Tensor] = None
-    completion: Optional[str] = None
-    is_correct: Optional[bool] = None
+    input_ids: torch.Tensor | None = None
+    attention_mask: torch.Tensor | None = None
+    completion: str | None = None
+    is_correct: bool | None = None
 
 
 @dataclass
@@ -55,7 +54,7 @@ class AttributePrompt:
     """Represents an attribute with its associated prompt templates."""
 
     attribute: str
-    templates: List[str]
+    templates: list[str]
 
 
 @dataclass
@@ -67,11 +66,11 @@ class RAVELEntityPromptData:
     entity prompt data for the RAVEL project.
     """
 
-    prompts: Dict[str, Prompt] = field(default_factory=dict)
-    entity_attributes: Dict[str, Dict[str, str]] = field(default_factory=dict)
-    template_splits: Dict[str, str] = field(default_factory=dict)
-    entity_splits: Dict[str, str] = field(default_factory=dict)
-    attribute_prompts: List[AttributePrompt] = field(default_factory=list)
+    prompts: dict[str, Prompt] = field(default_factory=dict)
+    entity_attributes: dict[str, dict[str, str]] = field(default_factory=dict)
+    template_splits: dict[str, str] = field(default_factory=dict)
+    entity_splits: dict[str, str] = field(default_factory=dict)
+    attribute_prompts: list[AttributePrompt] = field(default_factory=list)
 
     @classmethod
     def from_files(cls, entity_type: str, data_dir: str, tokenizer: AutoTokenizer):
@@ -120,7 +119,7 @@ class RAVELEntityPromptData:
                         padding="max_length",
                         max_length=32,
                         truncation=True,
-                    )
+                    )  # type: ignore
                     prompts[text] = Prompt(
                         text=text,
                         template=t,
@@ -161,7 +160,7 @@ class RAVELEntityPromptData:
         wiki_file_path = os.path.join(
             data_dir, "base", f"wikipedia_{entity_type}_entity_prompts.json"
         )
-        with open(wiki_file_path, "r") as f:
+        with open(wiki_file_path) as f:
             wiki_prompts = json.load(f)
         filtered_wiki_prompts = {
             k: v for k, v in wiki_prompts.items() if k.count("%s") == 1
@@ -180,7 +179,7 @@ class RAVELEntityPromptData:
                     padding="max_length",
                     max_length=32,
                     truncation=True,
-                )
+                )  # type: ignore
                 prompt = Prompt(
                     text=text,
                     template=template,
@@ -219,7 +218,7 @@ class RAVELEntityPromptData:
 
         print(f"Added {len(filtered_wiki_prompts)} Wikipedia prompt templates")
 
-    def get_prompts_by_split(self, context_split: str) -> List[Prompt]:
+    def get_prompts_by_split(self, context_split: str) -> list[Prompt]:
         """Get prompts for a specific context split."""
         return [
             prompt
@@ -227,16 +226,16 @@ class RAVELEntityPromptData:
             if prompt.context_split == context_split
         ]
 
-    def get_entities(self, split: Optional[str] = None) -> List[str]:
+    def get_entities(self, split: str | None = None) -> list[str]:
         """
         Get entities, optionally filtered by split.
 
         Args:
-            split (Optional[str]): The split to filter entities by ('train', 'val', or 'test').
+            split (str | None): The split to filter entities by ('train', 'val', or 'test').
                                 If None, return all entities.
 
         Returns:
-            List[str]: A list of entity names.
+            list[str]: A list of entity names.
         """
         if split is None:
             return list(self.entity_splits.keys())
@@ -252,24 +251,24 @@ class RAVELEntityPromptData:
         assert text in self.prompts, f'Prompt with text "{text}" not found'
         return self.prompts[text]
 
-    def get_prompts_by_template(self, template: str) -> List[Prompt]:
+    def get_prompts_by_template(self, template: str) -> list[Prompt]:
         """Get all prompts for a specific template."""
         return [p for p in self.prompts.values() if p.template == template]
 
-    def get_prompts_by_attribute(self, attribute: str) -> List[Prompt]:
+    def get_prompts_by_attribute(self, attribute: str) -> list[Prompt]:
         """Get all prompts for a specific attribute."""
         return [p for p in self.prompts.values() if p.attribute == attribute]
 
-    def get_prompts_by_entity(self, entity: str) -> List[Prompt]:
+    def get_prompts_by_entity(self, entity: str) -> list[Prompt]:
         """Get all prompts for a specific entity."""
         return [p for p in self.prompts.values() if p.entity == entity]
 
-    def _filter_data(self, filtered_prompts: Dict[str, Prompt]):
+    def _filter_data(self, filtered_prompts: dict[str, Prompt]):
         """
         Create a new RAVELEntityPromptData instance with filtered data.
 
         Args:
-            filtered_prompts (Dict[str, Prompt]): Dictionary of prompts to keep.
+            filtered_prompts (dict[str, Prompt]): Dictionary of prompts to keep.
 
         Returns:
             RAVELEntityPromptData: New instance with filtered data.
@@ -361,7 +360,7 @@ class RAVELEntityPromptData:
                     )
                     <= 2
                 )
-            except:
+            except:  # noqa: E722
                 correct = False
         elif any(country in label for country in ["United States", "United Kingdom"]):
             norm_label = label.strip().replace("the ", "")
@@ -409,9 +408,9 @@ class RAVELEntityPromptData:
         if (
             not correct
             and re.search(r"[+\-](\d+)", norm_out)
-            and int(re.search(r"[+\-](\d+)", norm_out).group(1)) > 11
+            and int(re.search(r"[+\-](\d+)", norm_out).group(1)) > 11  # type: ignore
         ):
-            offset = 24 - int(re.search(r"[+\-](\d+)", norm_out).group(1))
+            offset = 24 - int(re.search(r"[+\-](\d+)", norm_out).group(1))  # type: ignore
             correct = str(offset) in norm_label
 
         return correct
@@ -421,16 +420,16 @@ class RAVELEntityPromptData:
         return (re.search(r"\-[5-8]", norm_label) and label.startswith("America")) or (
             re.search(r"\+[0-3]", norm_label)
             and (label.startswith("Europe") or label.startswith("Africa"))
-        )
+        )  # type: ignore
 
     def generate_completions(
         self,
         model: NNsight,
         tokenizer: AutoTokenizer,
         batch_size: int = 32,
-        max_length: Optional[int] = None,
+        max_length: int | None = None,
         prompt_max_length: int = 48,
-        max_new_tokens: Optional[int] = None,
+        max_new_tokens: int | None = None,
         **kwargs,
     ):
         """
@@ -440,9 +439,9 @@ class RAVELEntityPromptData:
             model (NNsight): The model to use for generation.
             tokenizer (AutoTokenizer): The tokenizer to use.
             batch_size (int): Batch size for generation.
-            max_length (Optional[int]): Maximum length of the generated sequence.
+            max_length (int | None): Maximum length of the generated sequence.
             prompt_max_length (int): Maximum length of the prompt.
-            max_new_tokens (Optional[int]): Maximum number of new tokens to generate.
+            max_new_tokens (int | None): Maximum number of new tokens to generate.
             **kwargs: Additional keyword arguments for generation.
         """
         all_prompts = list(self.prompts.values())
@@ -502,7 +501,7 @@ class RAVELEntityPromptData:
         Filter prompts to keep only those with a single '%s' in the template.
 
         Returns:
-            Dict[str, Prompt]: Filtered prompts.
+            dict[str, Prompt]: Filtered prompts.
         """
         return {
             text: prompt
@@ -530,7 +529,7 @@ class RAVELEntityPromptData:
         for (entity, _), stat in stats.items():
             entity_scores[entity] = entity_scores.get(entity, 0) + stat["correct"]
         kept_entities = set(
-            sorted(entity_scores, key=entity_scores.get, reverse=True)[:top_n_entities]
+            sorted(entity_scores, key=entity_scores.get, reverse=True)[:top_n_entities]  # type: ignore
         )
 
         # Calculate template scores and keep top N per attribute
@@ -548,9 +547,9 @@ class RAVELEntityPromptData:
             kept_templates.update(
                 sorted(
                     [t for t in attr_templates if t in template_scores],
-                    key=template_scores.get,
+                    key=template_scores.get,  # type: ignore
                     reverse=True,
-                )[:top_n_templates_per_attribute]
+                )[:top_n_templates_per_attribute]  # type: ignore
             )
 
         # Filter prompts
@@ -578,7 +577,7 @@ class RAVELEntityPromptData:
         return len(self.prompts)
 
 
-def timezone_name_to_utc_offset(name: str) -> Optional[str]:
+def timezone_name_to_utc_offset(name: str) -> str | None:
     """
     Convert a timezone name to its UTC offset.
 
@@ -586,10 +585,10 @@ def timezone_name_to_utc_offset(name: str) -> Optional[str]:
         name (str): Timezone name.
 
     Returns:
-        Optional[str]: UTC offset as a string, or None if conversion fails.
+        str | None: UTC offset as a string, or None if conversion fails.
     """
     try:
-        offset = ZoneInfo(name).utcoffset(datetime.datetime.now()).seconds
+        offset = ZoneInfo(name).utcoffset(datetime.datetime.now()).seconds  # type: ignore
         sign = "+" if offset < 12 * 3600 else "-"
         if offset >= 12 * 3600:
             offset = 24 * 3600 - offset

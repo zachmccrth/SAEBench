@@ -7,21 +7,21 @@ from tqdm.autonotebook import tqdm
 from transformer_lens import HookedTransformer
 
 from sae_bench.evals.absorption.common import (
-    RESULTS_DIR,
     PROBES_DIR,
+    RESULTS_DIR,
     get_or_make_dir,
     load_df_or_run,
     load_experiment_df,
     load_probe,
+)
+from sae_bench.evals.absorption.feature_absorption_calculator import (
+    FeatureAbsorptionCalculator,
 )
 from sae_bench.evals.absorption.k_sparse_probing import (
     SPARSE_PROBING_EXPERIMENT_NAME,
     add_feature_splits_to_metrics_df,
     get_sparse_probing_metrics_filename,
     get_sparse_probing_raw_results_filename,
-)
-from sae_bench.evals.absorption.feature_absorption_calculator import (
-    FeatureAbsorptionCalculator,
 )
 from sae_bench.evals.absorption.probing import LinearProbe
 from sae_bench.evals.absorption.prompting import (
@@ -125,13 +125,10 @@ def get_stats_and_likely_false_negative_tokens(
     for letter in LETTERS:
         split_feats = metrics_df[metrics_df["letter"] == letter]["split_feats"].iloc(  # type: ignore
             0
-        )[
-            0
-        ]
+        )[0]
         k = len(split_feats)
         potential_false_negatives = raw_df[
-            (raw_df["answer_letter"] == letter)
-            & (raw_df[f"score_probe_{letter}"] > 0)
+            (raw_df["answer_letter"] == letter) & (raw_df[f"score_probe_{letter}"] > 0)
         ]["token"].tolist()
         num_split_feats_true_positives = raw_df[
             (raw_df["answer_letter"] == letter)

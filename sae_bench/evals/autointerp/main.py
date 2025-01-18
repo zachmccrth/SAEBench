@@ -1,14 +1,14 @@
+import argparse
 import asyncio
 import gc
+import os
 import random
+import time
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
-from typing import Any, Iterator, Literal, TypeAlias, Optional
-import os
-import time
-import argparse
-import json
 from datetime import datetime
+from typing import Any, Literal, TypeAlias
 
 import torch
 from openai import OpenAI
@@ -18,6 +18,9 @@ from torch import Tensor
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
+import sae_bench.sae_bench_utils.activation_collection as activation_collection
+import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
+import sae_bench.sae_bench_utils.general_utils as general_utils
 from sae_bench.evals.autointerp.eval_config import AutoInterpEvalConfig
 from sae_bench.evals.autointerp.eval_output import (
     EVAL_TYPE_ID_AUTOINTERP,
@@ -25,25 +28,18 @@ from sae_bench.evals.autointerp.eval_output import (
     AutoInterpMetricCategories,
     AutoInterpMetrics,
 )
-
+from sae_bench.sae_bench_utils import (
+    get_eval_uuid,
+    get_sae_bench_version,
+    get_sae_lens_version,
+)
 from sae_bench.sae_bench_utils.indexing_utils import (
     get_iw_sample_indices,
     get_k_largest_indices,
     index_with_buffer,
 )
-import sae_bench.sae_bench_utils.dataset_utils as dataset_utils
-import sae_bench.sae_bench_utils.activation_collection as activation_collection
-import sae_bench.sae_bench_utils.general_utils as general_utils
-
-
-from sae_bench.sae_bench_utils import (
-    get_eval_uuid,
-    get_sae_lens_version,
-    get_sae_bench_version,
-)
 from sae_bench.sae_bench_utils.sae_selection_utils import (
     get_saes_from_regex,
-    select_saes_multiple_patterns,
 )
 
 Messages: TypeAlias = list[dict[Literal["role", "content"], str]]
@@ -76,7 +72,9 @@ class Example:
         self.acts = acts
         self.act_threshold = act_threshold
         self.toks_are_active = [act > act_threshold for act in self.acts]
-        self.is_active = any(self.toks_are_active)  # this is what we predict in the scoring phase
+        self.is_active = any(
+            self.toks_are_active
+        )  # this is what we predict in the scoring phase
 
     def to_str(self, mark_toks: bool = False) -> str:
         return (
@@ -100,7 +98,9 @@ class Examples:
         if shuffle:
             random.shuffle(self.examples)
         else:
-            self.examples = sorted(self.examples, key=lambda x: max(x.acts), reverse=True)
+            self.examples = sorted(
+                self.examples, key=lambda x: max(x.acts), reverse=True
+            )
 
     def display(self, predictions: list[int] | None = None) -> str:
         """
@@ -167,7 +167,9 @@ class AutoInterp:
             assert self.cfg.n_latents is not None
             sparsity *= cfg.total_tokens
             alive_latents = (
-                torch.nonzero(sparsity > self.cfg.dead_latent_threshold).squeeze(1).tolist()
+                torch.nonzero(sparsity > self.cfg.dead_latent_threshold)
+                .squeeze(1)
+                .tolist()
             )
             if len(alive_latents) < self.cfg.n_latents:
                 self.latents = alive_latents
@@ -178,7 +180,9 @@ class AutoInterp:
                 self.latents = random.sample(alive_latents, k=self.cfg.n_latents)
         self.n_latents = len(self.latents)
 
-    async def run(self, explanations_override: dict[int, str] = {}) -> dict[int, dict[str, Any]]:
+    async def run(
+        self, explanations_override: dict[int, str] = {}
+    ) -> dict[int, dict[str, Any]]:
         """
         Runs both generation & scoring phases. Returns a dict where keys are latent indices, and values are dicts with:
 
@@ -275,7 +279,11 @@ class AutoInterp:
 
     def parse_predictions(self, predictions: str) -> list[int] | None:
         predictions_split = (
-            predictions.strip().rstrip(".").replace("and", ",").replace("None", "").split(",")
+            predictions.strip()
+            .rstrip(".")
+            .replace("and", ",")
+            .replace("None", "")
+            .split(",")
         )
         predictions_list = [i.strip() for i in predictions_split if i.strip() != ""]
         if predictions_list == []:
@@ -285,12 +293,16 @@ class AutoInterp:
         predictions_ints = [int(pred.strip()) for pred in predictions_list]
         return predictions_ints
 
-    def score_predictions(self, predictions: list[int], scoring_examples: Examples) -> float:
-        classifications = [i in predictions for i in range(1, len(scoring_examples) + 1)]
+    def score_predictions(
+        self, predictions: list[int], scoring_examples: Examples
+    ) -> float:
+        classifications = [
+            i in predictions for i in range(1, len(scoring_examples) + 1)
+        ]
         correct_classifications = [ex.is_active for ex in scoring_examples]
-        return sum([c == cc for c, cc in zip(classifications, correct_classifications)]) / len(
-            classifications
-        )
+        return sum(
+            [c == cc for c, cc in zip(classifications, correct_classifications)]
+        ) / len(classifications)
 
     def get_api_response(
         self, messages: Messages, max_tokens: int, n_completions: int = 1
@@ -312,7 +324,10 @@ class AutoInterp:
         response = [choice.message.content.strip() for choice in result.choices]
 
         logs = tabulate(
-            [m.values() for m in messages + [{"role": "assistant", "content": response[0]}]],
+            [
+                m.values()
+                for m in messages + [{"role": "assistant", "content": response[0]}]
+            ],
             tablefmt="simple_grid",
             maxcolwidths=[None, 120],
         )
@@ -323,7 +338,10 @@ class AutoInterp:
         assert len(generation_examples) > 0, "No generation examples found"
 
         examples_as_str = "\n".join(
-            [f"{i + 1}. {ex.to_str(mark_toks=True)}" for i, ex in enumerate(generation_examples)]
+            [
+                f"{i + 1}. {ex.to_str(mark_toks=True)}"
+                for i, ex in enumerate(generation_examples)
+            ]
         )
 
         SYSTEM_PROMPT = """We're studying neurons in a neural network. Each neuron activates on some particular word/words/substring/concept in a short document. The activating words in each document are indicated with << ... >>. We will give you a list of documents on which the neuron activates, in order from most strongly activating to least strongly activating. Look at the parts of the document the neuron activates for and summarize in a single sentence what the neuron is activating on. Try not to be overly specific in your explanation. Note that some neurons will activate only on specific words or substrings, but others will activate on most/all words in a sentence provided that sentence contains some particular concept. Your explanation should cover most or all activating words (for example, don't give an explanation which is specific to a single word if all words in a sentence cause the neuron to activate). Pay attention to things like the capitalization and punctuation of the activating words or concepts, if that seems relevant. Keep the explanation as short and simple as possible, limited to 20 words or less. Omit punctuation and formatting. You should avoid giving long lists of words."""
@@ -333,18 +351,25 @@ class AutoInterp:
             SYSTEM_PROMPT += (
                 """Your response should be in the form "This neuron activates on..."."""
             )
-        USER_PROMPT = f"""The activating documents are given below:\n\n{examples_as_str}"""
+        USER_PROMPT = (
+            f"""The activating documents are given below:\n\n{examples_as_str}"""
+        )
 
         return [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": USER_PROMPT},
         ]
 
-    def get_scoring_prompts(self, explanation: str, scoring_examples: Examples) -> Messages:
+    def get_scoring_prompts(
+        self, explanation: str, scoring_examples: Examples
+    ) -> Messages:
         assert len(scoring_examples) > 0, "No scoring examples found"
 
         examples_as_str = "\n".join(
-            [f"{i + 1}. {ex.to_str(mark_toks=False)}" for i, ex in enumerate(scoring_examples)]
+            [
+                f"{i + 1}. {ex.to_str(mark_toks=False)}"
+                for i, ex in enumerate(scoring_examples)
+            ]
         )
 
         example_response = sorted(
@@ -383,7 +408,9 @@ class AutoInterp:
         generation_examples = {}
         scoring_examples = {}
 
-        for i, latent in tqdm(enumerate(self.latents), desc="Collecting examples for LLM judge"):
+        for i, latent in tqdm(
+            enumerate(self.latents), desc="Collecting examples for LLM judge"
+        ):
             # (1/3) Get random examples (we don't need their values)
             rand_indices = torch.stack(
                 [
@@ -410,7 +437,9 @@ class AutoInterp:
             top_toks = index_with_buffer(
                 self.tokenized_dataset, top_indices, buffer=self.cfg.buffer
             )
-            top_values = index_with_buffer(acts[..., i], top_indices, buffer=self.cfg.buffer)
+            top_values = index_with_buffer(
+                acts[..., i], top_indices, buffer=self.cfg.buffer
+            )
             act_threshold = self.cfg.act_threshold_frac * top_values.max().item()
 
             # (3/3) Get importance-weighted examples, using a threshold so they're disjoint from top examples
@@ -422,18 +451,32 @@ class AutoInterp:
             iw_indices = get_iw_sample_indices(
                 acts_thresholded, k=self.cfg.n_iw_sampled_ex, buffer=self.cfg.buffer
             )
-            iw_toks = index_with_buffer(self.tokenized_dataset, iw_indices, buffer=self.cfg.buffer)
-            iw_values = index_with_buffer(acts[..., i], iw_indices, buffer=self.cfg.buffer)
+            iw_toks = index_with_buffer(
+                self.tokenized_dataset, iw_indices, buffer=self.cfg.buffer
+            )
+            iw_values = index_with_buffer(
+                acts[..., i], iw_indices, buffer=self.cfg.buffer
+            )
 
             # Get random values to use for splitting
             rand_top_ex_split_indices = torch.randperm(self.cfg.n_top_ex)
-            top_gen_indices = rand_top_ex_split_indices[: self.cfg.n_top_ex_for_generation]
-            top_scoring_indices = rand_top_ex_split_indices[self.cfg.n_top_ex_for_generation :]
+            top_gen_indices = rand_top_ex_split_indices[
+                : self.cfg.n_top_ex_for_generation
+            ]
+            top_scoring_indices = rand_top_ex_split_indices[
+                self.cfg.n_top_ex_for_generation :
+            ]
             rand_iw_split_indices = torch.randperm(self.cfg.n_iw_sampled_ex)
-            iw_gen_indices = rand_iw_split_indices[: self.cfg.n_iw_sampled_ex_for_generation]
-            iw_scoring_indices = rand_iw_split_indices[self.cfg.n_iw_sampled_ex_for_generation :]
+            iw_gen_indices = rand_iw_split_indices[
+                : self.cfg.n_iw_sampled_ex_for_generation
+            ]
+            iw_scoring_indices = rand_iw_split_indices[
+                self.cfg.n_iw_sampled_ex_for_generation :
+            ]
 
-            def create_examples(all_toks: Tensor, all_acts: Tensor | None = None) -> list[Example]:
+            def create_examples(
+                all_toks: Tensor, all_acts: Tensor | None = None
+            ) -> list[Example]:
                 if all_acts is None:
                     all_acts = torch.zeros_like(all_toks).float()
                 return [
@@ -452,8 +495,12 @@ class AutoInterp:
                 + create_examples(iw_toks[iw_gen_indices], iw_values[iw_gen_indices]),
             )
             scoring_examples[latent] = Examples(
-                create_examples(top_toks[top_scoring_indices], top_values[top_scoring_indices])
-                + create_examples(iw_toks[iw_scoring_indices], iw_values[iw_scoring_indices])
+                create_examples(
+                    top_toks[top_scoring_indices], top_values[top_scoring_indices]
+                )
+                + create_examples(
+                    iw_toks[iw_scoring_indices], iw_values[iw_scoring_indices]
+                )
                 + create_examples(rand_toks),
                 shuffle=True,
             )
@@ -468,7 +515,7 @@ def run_eval_single_sae(
     device: str,
     artifacts_folder: str,
     api_key: str,
-    sae_sparsity: Optional[torch.Tensor] = None,
+    sae_sparsity: torch.Tensor | None = None,
 ) -> dict[str, float]:
     random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
@@ -476,9 +523,7 @@ def run_eval_single_sae(
 
     os.makedirs(artifacts_folder, exist_ok=True)
 
-    tokens_filename = (
-        f"{config.model_name}_{config.total_tokens}_tokens_{config.llm_context_size}_ctx.pt"
-    )
+    tokens_filename = f"{config.model_name}_{config.total_tokens}_tokens_{config.llm_context_size}_ctx.pt"
     tokens_path = os.path.join(artifacts_folder, tokens_filename)
 
     if os.path.exists(tokens_path):
@@ -488,7 +533,7 @@ def run_eval_single_sae(
             config.dataset_name,
             config.llm_context_size,
             config.total_tokens,
-            model.tokenizer,
+            model.tokenizer,  # type: ignore
         ).to(device)
         torch.save(tokenized_dataset, tokens_path)
 
@@ -515,7 +560,7 @@ def run_eval_single_sae(
         device=device,
     )
     results = asyncio.run(autointerp.run())
-    return results
+    return results  # type: ignore
 
 
 def run_eval(
@@ -525,7 +570,7 @@ def run_eval(
     api_key: str,
     output_path: str,
     force_rerun: bool = False,
-    save_logs_path: Optional[str] = None,
+    save_logs_path: str | None = None,
 ) -> dict[str, Any]:
     """
     selected_saes is a list of either tuples of (sae_lens release, sae_lens id) or (sae_name, SAE object)
@@ -550,10 +595,12 @@ def run_eval(
     ):
         sae_id, sae, sparsity = general_utils.load_and_format_sae(
             sae_release, sae_object_or_id, device
-        )
+        )  # type: ignore
         sae = sae.to(device=device, dtype=llm_dtype)
 
-        sae_result_path = general_utils.get_results_filepath(output_path, sae_release, sae_id)
+        sae_result_path = general_utils.get_results_filepath(
+            output_path, sae_release, sae_id
+        )
 
         if os.path.exists(sae_result_path) and not force_rerun:
             print(f"Skipping {sae_release}_{sae_id} as results already exist")
@@ -576,20 +623,23 @@ def run_eval(
                 "score",
             ]
             logs = "Summary table:\n" + tabulate(
-                [[sae_eval_result[latent][h] for h in headers] for latent in sae_eval_result],
+                [
+                    [sae_eval_result[latent][h] for h in headers]  # type: ignore
+                    for latent in sae_eval_result
+                ],
                 headers=headers,
                 tablefmt="simple_outline",
             )
-            worst_result = min(sae_eval_result.values(), key=lambda x: x["score"])
-            best_result = max(sae_eval_result.values(), key=lambda x: x["score"])
-            logs += f"\n\nWorst scoring idx {worst_result['latent']}, score = {worst_result['score']}\n{worst_result['logs']}"
-            logs += f"\n\nBest scoring idx {best_result['latent']}, score = {best_result['score']}\n{best_result['logs']}"
+            worst_result = min(sae_eval_result.values(), key=lambda x: x["score"])  # type: ignore
+            best_result = max(sae_eval_result.values(), key=lambda x: x["score"])  # type: ignore
+            logs += f"\n\nWorst scoring idx {worst_result['latent']}, score = {worst_result['score']}\n{worst_result['logs']}"  # type: ignore
+            logs += f"\n\nBest scoring idx {best_result['latent']}, score = {best_result['score']}\n{best_result['logs']}"  # type: ignore
             # Save the results to a file
             with open(save_logs_path, "a") as f:
                 f.write(logs)
 
         # Put important results into the results dict
-        all_scores = [r["score"] for r in sae_eval_result.values()]
+        all_scores = [r["score"] for r in sae_eval_result.values()]  # type: ignore
 
         all_scores_tensor = torch.tensor(all_scores)
         score = all_scores_tensor.mean().item()
@@ -600,7 +650,9 @@ def run_eval(
             eval_id=eval_instance_id,
             datetime_epoch_millis=int(datetime.now().timestamp() * 1000),
             eval_result_metrics=AutoInterpMetricCategories(
-                autointerp=AutoInterpMetrics(autointerp_score=score, autointerp_std_dev=std_dev)
+                autointerp=AutoInterpMetrics(
+                    autointerp_score=score, autointerp_std_dev=std_dev
+                )
             ),
             eval_result_details=[],
             eval_result_unstructured=sae_eval_result,
@@ -631,7 +683,9 @@ def create_config_and_selected_saes(
     if args.llm_batch_size is not None:
         config.llm_batch_size = args.llm_batch_size
     else:
-        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[config.model_name]
+        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[
+            config.model_name
+        ]
 
     if args.llm_dtype is not None:
         config.llm_dtype = args.llm_dtype
@@ -677,7 +731,9 @@ def arg_parser():
         default="eval_results/autointerp",
         help="Output folder",
     )
-    parser.add_argument("--force_rerun", action="store_true", help="Force rerun of experiments")
+    parser.add_argument(
+        "--force_rerun", action="store_true", help="Force rerun of experiments"
+    )
     parser.add_argument(
         "--llm_batch_size",
         type=int,

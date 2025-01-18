@@ -1,5 +1,5 @@
 import copy
-from typing import Optional
+import math
 
 import torch
 import torch.nn as nn
@@ -7,7 +7,6 @@ from beartype import beartype
 from jaxtyping import Bool, Float, Int, jaxtyped
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
-import math
 
 import sae_bench.sae_bench_utils.dataset_info as dataset_info
 
@@ -141,7 +140,7 @@ def train_sklearn_probe(
     max_iter: int = 1000,  # non-default sklearn value, increased due to convergence warnings
     C: float = 1.0,  # default sklearn value
     verbose: bool = False,
-    l1_ratio: Optional[float] = None,
+    l1_ratio: float | None = None,
 ) -> tuple[LogisticRegression, float]:
     train_inputs = train_inputs.to(dtype=torch.float32)
     test_inputs = test_inputs.to(dtype=torch.float32)
@@ -177,7 +176,7 @@ def train_sklearn_probe(
     test_accuracy = accuracy_score(test_labels_np, probe.predict(test_inputs_np))
 
     if verbose:
-        print(f"\nTraining completed.")
+        print("\nTraining completed.")
         print(f"Train accuracy: {train_accuracy}, Test accuracy: {test_accuracy}\n")
 
     return probe, test_accuracy
@@ -194,7 +193,7 @@ def test_sklearn_probe(
     inputs_np = inputs.cpu().numpy()
     labels_np = labels.cpu().numpy()
     predictions = probe.predict(inputs_np)
-    return accuracy_score(labels_np, predictions)
+    return accuracy_score(labels_np, predictions)  # type: ignore
 
 
 @jaxtyped(typechecker=beartype)
@@ -228,9 +227,6 @@ def test_probe_gpu(
             losses.append(loss)
 
         accuracy_all = torch.cat(all_corrects).mean().item()
-        accuracy_0 = torch.cat(corrects_0).mean().item() if corrects_0 else 0.0
-        accuracy_1 = torch.cat(corrects_1).mean().item() if corrects_1 else 0.0
-        all_loss = torch.stack(losses).mean().item()
 
     return accuracy_all
 
@@ -246,7 +242,7 @@ def train_probe_gpu(
     epochs: int,
     lr: float,
     verbose: bool = False,
-    l1_penalty: Optional[float] = None,
+    l1_penalty: float | None = None,
     early_stopping_patience: int = 10,
 ) -> tuple[Probe, float]:
     """We have a GPU training function for training on all SAE features, which was very slow (1 minute+) on CPU.
@@ -295,7 +291,7 @@ def train_probe_gpu(
 
         if verbose:
             print(
-                f"Epoch {epoch + 1}/{epochs} Loss: {loss.item()}, train accuracy: {train_accuracy}, test accuracy: {test_accuracy}"
+                f"Epoch {epoch + 1}/{epochs} Loss: {loss.item()}, train accuracy: {train_accuracy}, test accuracy: {test_accuracy}"  # type: ignore
             )
 
         if patience_counter >= early_stopping_patience:
@@ -304,6 +300,7 @@ def train_probe_gpu(
             )
             break
 
+    assert best_probe is not None
     return best_probe, best_test_accuracy
 
 
@@ -311,7 +308,7 @@ def train_probe_gpu(
 def train_probe_on_activations(
     train_activations: dict[str, Float[torch.Tensor, "train_dataset_size d_model"]],
     test_activations: dict[str, Float[torch.Tensor, "test_dataset_size d_model"]],
-    select_top_k: Optional[int] = None,
+    select_top_k: int | None = None,
     use_sklearn: bool = True,
     batch_size: int = 16,
     epochs: int = 5,
@@ -319,7 +316,7 @@ def train_probe_on_activations(
     verbose: bool = False,
     early_stopping_patience: int = 10,
     perform_scr: bool = False,
-    l1_penalty: Optional[float] = None,
+    l1_penalty: float | None = None,
 ) -> tuple[dict[str, LogisticRegression | Probe], dict[str, float]]:
     """Train a probe on the given activations and return the probe and test accuracies for each profession.
     use_sklearn is a flag to use sklearn's LogisticRegression model instead of a custom PyTorch model.

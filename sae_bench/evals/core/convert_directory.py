@@ -1,6 +1,7 @@
 import json
 import sys
 from pathlib import Path
+
 from sae_bench.evals.core.eval_output import CoreEvalOutput
 from sae_bench.evals.core.main import convert_feature_metrics
 
@@ -25,7 +26,7 @@ output_dir.mkdir(exist_ok=True)
 for input_file in input_files:
     print(f"Converting {input_file}")
     output_file = output_dir / input_file.name
-    with open(input_file, "r") as f:
+    with open(input_file) as f:
         data = json.load(f)
     feature_metrics = convert_feature_metrics(data["eval_result_details"][0])
     data["eval_result_details"] = feature_metrics
@@ -41,5 +42,6 @@ for input_file in input_files:
             sae_lens_id=data["sae_lens_id"],
             sae_lens_release_id=data["sae_lens_release_id"],
             sae_lens_version=data["sae_lens_version"],
+            sae_cfg_dict=data["sae_cfg_dict"],
         )
         eval_output.to_json_file(str(output_file))

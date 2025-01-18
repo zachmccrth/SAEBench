@@ -1,13 +1,16 @@
+import argparse
 import json
 import os
-import argparse
-from sae_bench.evals.core.eval_output import CoreEvalOutput
-from sae_bench.sae_bench_utils.testing_utils import validate_eval_cli_interface
+
 import torch
+
 import sae_bench.evals.core.eval_config as eval_config
 import sae_bench.evals.core.main as core
-from sae_bench.sae_bench_utils.sae_selection_utils import get_saes_from_regex
-from sae_bench.sae_bench_utils.testing_utils import validate_eval_output_format_file
+from sae_bench.evals.core.eval_output import CoreEvalOutput
+from sae_bench.sae_bench_utils.testing_utils import (
+    validate_eval_cli_interface,
+    validate_eval_output_format_file,
+)
 
 test_data_dir = "tests/acceptance/test_data/core"
 expected_results_filename = os.path.join(test_data_dir, "core_expected_results.json")
@@ -99,7 +102,7 @@ def test_end_to_end():
     result = eval_results[0]  # Get the first result
 
     # Load expected results and compare
-    with open(expected_results_filename, "r") as f:
+    with open(expected_results_filename) as f:
         expected_results = json.load(f)
 
     # Compare key metrics with expected values

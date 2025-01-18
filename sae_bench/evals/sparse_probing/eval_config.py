@@ -1,5 +1,6 @@
-from pydantic.dataclasses import dataclass
 from pydantic import Field
+from pydantic.dataclasses import dataclass
+
 from sae_bench.evals.base_eval_output import BaseEvalConfig
 
 
@@ -47,11 +48,11 @@ class SparseProbingEvalConfig(BaseEvalConfig):
         title="SAE Batch Size",
         description="SAE batch size, inference only",
     )
-    llm_batch_size: int = Field(
+    llm_batch_size: int | None = Field(
         default=None,
         title="LLM Batch Size",
         description="LLM batch size. This is set by default in the main script, or it can be set with a command line argument.",
-    )
+    )  # type: ignore
     llm_dtype: str = Field(
         default="",
         title="LLM Data Type",

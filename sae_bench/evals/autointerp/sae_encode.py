@@ -8,7 +8,9 @@ from jaxtyping import Float
 from sae_lens import SAE
 
 
-def encode_subset(self: SAE, x: torch.Tensor, latents: torch.Tensor | None = None) -> torch.Tensor:
+def encode_subset(
+    self: SAE, x: torch.Tensor, latents: torch.Tensor | None = None
+) -> torch.Tensor:
     """
     Calculate SAE latents from inputs. Includes optional `latents` argument to only calculate a subset.
     """
@@ -50,12 +52,15 @@ def encode_gated(
     sae_in = x - self.b_dec * self.cfg.apply_b_dec_to_input
 
     # Gating path
-    gating_pre_activation = sae_in @ self.W_enc[:, latents_tensor] + self.b_gate[latents_tensor]
+    gating_pre_activation = (
+        sae_in @ self.W_enc[:, latents_tensor] + self.b_gate[latents_tensor]
+    )
     active_features = (gating_pre_activation > 0).to(self.dtype)
 
     # Magnitude path with weight sharing
     magnitude_pre_activation = self.hook_sae_acts_pre(
-        sae_in @ (self.W_enc[:, latents_tensor] * self.r_mag[latents_tensor].exp()) + self.b_mag[latents_tensor]
+        sae_in @ (self.W_enc[:, latents_tensor] * self.r_mag[latents_tensor].exp())
+        + self.b_mag[latents_tensor]
     )
     feature_magnitudes = self.activation_fn(magnitude_pre_activation)
 
@@ -93,7 +98,9 @@ def encode_jumprelu(
     sae_in = self.hook_sae_input(x - (self.b_dec * self.cfg.apply_b_dec_to_input))
 
     # "... d_in, d_in d_sae -> ... d_sae",
-    hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc[:, latents_tensor] + self.b_enc[latents_tensor])
+    hidden_pre = self.hook_sae_acts_pre(
+        sae_in @ self.W_enc[:, latents_tensor] + self.b_enc[latents_tensor]
+    )
 
     feature_acts = self.hook_sae_acts_post(
         self.activation_fn(hidden_pre) * (hidden_pre > self.threshold[latents_tensor])
@@ -127,7 +134,9 @@ def encode_standard(
     sae_in = x - (self.b_dec * self.cfg.apply_b_dec_to_input)
 
     # "... d_in, d_in d_sae -> ... d_sae",
-    hidden_pre = self.hook_sae_acts_pre(sae_in @ self.W_enc[:, latents_tensor] + self.b_enc[latents_tensor])
+    hidden_pre = self.hook_sae_acts_pre(
+        sae_in @ self.W_enc[:, latents_tensor] + self.b_enc[latents_tensor]
+    )
     feature_acts = self.hook_sae_acts_post(self.activation_fn(hidden_pre))
 
     return feature_acts

@@ -1,14 +1,14 @@
-import torch
-import torch.nn as nn
-from tqdm import tqdm
-from typing import Callable, Optional, Any
-from jaxtyping import Bool, Int, Float, jaxtyped
-from beartype import beartype
+import os
+from typing import Any
+
 import einops
+import torch
+from beartype import beartype
+from jaxtyping import Bool, Float, Int, jaxtyped
+from sae_lens import SAE
+from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformers import AutoTokenizer
-from sae_lens import SAE
-import os
 
 # Relevant at ctx len 128
 LLM_NAME_TO_BATCH_SIZE = {
@@ -37,9 +37,9 @@ def get_bos_pad_eos_mask(
     tokens: Int[torch.Tensor, "dataset_size seq_len"], tokenizer: AutoTokenizer | Any
 ) -> Bool[torch.Tensor, "dataset_size seq_len"]:
     mask = (
-        (tokens == tokenizer.pad_token_id)
-        | (tokens == tokenizer.eos_token_id)
-        | (tokens == tokenizer.bos_token_id)
+        (tokens == tokenizer.pad_token_id)  # type: ignore
+        | (tokens == tokenizer.eos_token_id)  # type: ignore
+        | (tokens == tokenizer.bos_token_id)  # type: ignore
     ).to(dtype=torch.bool)
     return ~mask
 
@@ -90,7 +90,9 @@ def get_llm_activations(
 @jaxtyped(typechecker=beartype)
 @torch.no_grad
 def get_all_llm_activations(
-    tokenized_inputs_dict: dict[str, dict[str, Int[torch.Tensor, "dataset_size seq_len"]]],
+    tokenized_inputs_dict: dict[
+        str, dict[str, Int[torch.Tensor, "dataset_size seq_len"]]
+    ],
     model: HookedTransformer,
     batch_size: int,
     layer: int,
@@ -124,8 +126,8 @@ def collect_sae_activations(
     layer: int,
     hook_name: str,
     mask_bos_pad_eos_tokens: bool = False,
-    selected_latents: Optional[list[int]] = None,
-    activation_dtype: Optional[torch.dtype] = None,
+    selected_latents: list[int] | None = None,
+    activation_dtype: torch.dtype | None = None,
 ) -> Float[torch.Tensor, "dataset_size seq_len indexed_d_sae"]:
     """Collects SAE activations for a given set of tokens.
     Note: If evaluating many SAEs, it is more efficient to use save_activations() and encode_precomputed_activations()."""
@@ -133,7 +135,9 @@ def collect_sae_activations(
 
     for i in tqdm(range(0, tokens.shape[0], batch_size)):
         tokens_BL = tokens[i : i + batch_size]
-        _, cache = model.run_with_cache(tokens_BL, stop_at_layer=layer + 1, names_filter=hook_name)
+        _, cache = model.run_with_cache(
+            tokens_BL, stop_at_layer=layer + 1, names_filter=hook_name
+        )
         resid_BLD: Float[torch.Tensor, "batch seq_len d_model"] = cache[hook_name]
 
         sae_act_BLF: Float[torch.Tensor, "batch seq_len d_sae"] = sae.encode(resid_BLD)
@@ -178,7 +182,9 @@ def get_feature_activation_sparsity(
 
     for i in tqdm(range(0, tokens.shape[0], batch_size)):
         tokens_BL = tokens[i : i + batch_size]
-        _, cache = model.run_with_cache(tokens_BL, stop_at_layer=layer + 1, names_filter=hook_name)
+        _, cache = model.run_with_cache(
+            tokens_BL, stop_at_layer=layer + 1, names_filter=hook_name
+        )
         resid_BLD: Float[torch.Tensor, "batch seq_len d_model"] = cache[hook_name]
 
         sae_act_BLF: Float[torch.Tensor, "batch seq_len d_sae"] = sae.encode(resid_BLD)
@@ -203,7 +209,9 @@ def get_feature_activation_sparsity(
 @jaxtyped(typechecker=beartype)
 @torch.no_grad
 def create_meaned_model_activations(
-    all_llm_activations_BLD: dict[str, Float[torch.Tensor, "batch_size seq_len d_model"]],
+    all_llm_activations_BLD: dict[
+        str, Float[torch.Tensor, "batch_size seq_len d_model"]
+    ],
 ) -> dict[str, Float[torch.Tensor, "batch_size d_model"]]:
     """Mean activations across the sequence length dimension for each class while ignoring padding tokens.
     VERY IMPORTANT NOTE: We assume that the activations have been zeroed out for masked tokens."""
@@ -217,7 +225,9 @@ def create_meaned_model_activations(
         nonzero_acts_BL = (activations_BL != 0.0).to(dtype=dtype)
         nonzero_acts_B = einops.reduce(nonzero_acts_BL, "B L -> B", "sum")
 
-        meaned_acts_BD = einops.reduce(acts_BLD, "B L D -> B D", "sum") / nonzero_acts_B[:, None]
+        meaned_acts_BD = (
+            einops.reduce(acts_BLD, "B L D -> B D", "sum") / nonzero_acts_B[:, None]
+        )
         all_llm_activations_BD[class_name] = meaned_acts_BD
 
     return all_llm_activations_BD
@@ -226,7 +236,9 @@ def create_meaned_model_activations(
 @jaxtyped(typechecker=beartype)
 @torch.no_grad
 def get_sae_meaned_activations(
-    all_llm_activations_BLD: dict[str, Float[torch.Tensor, "batch_size seq_len d_model"]],
+    all_llm_activations_BLD: dict[
+        str, Float[torch.Tensor, "batch_size seq_len d_model"]
+    ],
     sae: SAE | Any,
     sae_batch_size: int,
 ) -> dict[str, Float[torch.Tensor, "batch_size d_sae"]]:
@@ -250,7 +262,9 @@ def get_sae_meaned_activations(
             nonzero_acts_B = einops.reduce(nonzero_acts_BL, "B L -> B", "sum")
 
             acts_BLF = acts_BLF * nonzero_acts_BL[:, :, None]
-            acts_BF = einops.reduce(acts_BLF, "B L F -> B F", "sum") / nonzero_acts_B[:, None]
+            acts_BF = (
+                einops.reduce(acts_BLF, "B L F -> B F", "sum") / nonzero_acts_B[:, None]
+            )
             acts_BF = acts_BF.to(dtype=dtype)
 
             all_acts_BF.append(acts_BF)
@@ -286,7 +300,8 @@ def save_activations(
         activations_list = []
 
         for i in tqdm(
-            range(0, tokens_SL.shape[0], batch_size), desc=f"Saving chunk {save_idx+1}/{num_chunks}"
+            range(0, tokens_SL.shape[0], batch_size),
+            desc=f"Saving chunk {save_idx + 1}/{num_chunks}",
         ):
             tokens_BL = tokens_SL[i : i + batch_size]
             _, cache = model.run_with_cache(
@@ -297,7 +312,9 @@ def save_activations(
             activations_list.append(resid_BLD.cpu())
 
         activations_SLD = torch.cat(activations_list, dim=0)
-        save_path = os.path.join(artifacts_dir, f"activations_{save_idx + 1}_of_{num_chunks}.pt")
+        save_path = os.path.join(
+            artifacts_dir, f"activations_{save_idx + 1}_of_{num_chunks}.pt"
+        )
 
         file_contents = {"activations": activations_SLD, "tokens": tokens_SL.cpu()}
 
@@ -313,8 +330,8 @@ def encode_precomputed_activations(
     num_chunks: int,
     activation_dir: str,
     mask_bos_pad_eos_tokens: bool = False,
-    selected_latents: Optional[list[int]] = None,
-    activation_dtype: Optional[torch.dtype] = None,
+    selected_latents: list[int] | None = None,
+    activation_dtype: torch.dtype | None = None,
 ) -> Float[torch.Tensor, "dataset_size seq_len d_sae"]:
     """Process saved activations through an SAE model, handling memory constraints through batching.
 

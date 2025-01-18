@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -12,13 +11,13 @@ class CustomSAEConfig:
 
     # The following are used for the core/main.py SAE evaluation
     # the values aren't important, the fields are just required
-    context_size: int = None  # Can be used for auto-interp
-    hook_head_index: Optional[int] = None
+    context_size: int = None  # type: ignore # Can be used for auto-interp
+    hook_head_index: int | None = None
 
     # Architecture settings
     architecture: str = ""
-    apply_b_dec_to_input: bool = None
-    finetuning_scaling_factor: bool = None
+    apply_b_dec_to_input: bool = None  # type: ignore
+    finetuning_scaling_factor: bool = None  # type: ignore
     activation_fn_str: str = ""
     activation_fn_kwargs = {}
     prepend_bos: bool = True
@@ -36,5 +35,5 @@ class CustomSAEConfig:
     training_tokens: int = -100_000
 
     # Metadata
-    sae_lens_training_version: Optional[str] = None
-    neuronpedia_id: Optional[str] = None
+    sae_lens_training_version: str | None = None
+    neuronpedia_id: str | None = None

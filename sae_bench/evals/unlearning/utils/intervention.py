@@ -1,14 +1,8 @@
 import torch
-import einops
-
-from torch import Tensor
 from jaxtyping import Float
-from transformer_lens.hook_points import HookPoint
-from contextlib import contextmanager
-from functools import partial
 from sae_lens import SAE
-
-import numpy as np
+from torch import Tensor
+from transformer_lens.hook_points import HookPoint
 
 
 def anthropic_clamp_resid_SAE_features(
@@ -18,7 +12,7 @@ def anthropic_clamp_resid_SAE_features(
     features_to_ablate: list[int],
     multiplier: float = 1.0,
     random: bool = False,
-) -> Float[Tensor, "batch seq d_model"]:
+) -> Float[Tensor, "batch seq d_model"] | None:
     """
     Given a list of feature indices, this hook function removes feature activations in a manner similar to the one
     used in "Scaling Monosemanticity": https://transformer-circuits.pub/2024/scaling-monosemanticity/index.html#appendix-methods-steering
@@ -30,7 +24,9 @@ def anthropic_clamp_resid_SAE_features(
             # adjust feature activations with scaling (multiplier = 0 just ablates the feature)
             feature_activations = sae.encode(resid)
 
-            feature_activations[:, 0, :] = 0.0  # We zero out the BOS token for all SAEs.
+            feature_activations[:, 0, :] = (
+                0.0  # We zero out the BOS token for all SAEs.
+            )
             # We don't need to zero out padding tokens because we right pad, so they don't effect the model generation.
 
             reconstruction = sae.decode(feature_activations)
@@ -103,3 +99,4 @@ def anthropic_clamp_resid_SAE_features(
             #     modified_reconstruction = modified_reconstruction / sae.input_scaling_factor
             resid = error + modified_reconstruction
         return resid
+    return None

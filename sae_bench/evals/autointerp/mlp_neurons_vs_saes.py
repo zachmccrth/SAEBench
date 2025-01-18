@@ -1,7 +1,7 @@
 import sae_bench.custom_saes.identity_sae as identity_sae
 import sae_bench.evals.autointerp.main as autointerp
-import sae_bench.sae_bench_utils.sae_selection_utils as sae_selection_utils
 import sae_bench.sae_bench_utils.general_utils as general_utils
+import sae_bench.sae_bench_utils.sae_selection_utils as sae_selection_utils
 
 if __name__ == "__main__":
     model_name = "gemma-2-2b"
@@ -14,19 +14,19 @@ if __name__ == "__main__":
     device = general_utils.setup_environment()
     force_rerun = False
 
-    with open("openai_api_key.txt", "r") as f:
+    with open("openai_api_key.txt") as f:
         api_key = f.read().strip()
 
     for layer in layers:
         mlp_hook = f"blocks.{layer}.mlp.hook_post"
         mlp_neurons = identity_sae.IdentitySAE(
             model_name, d_mlp, layer, hook_name=mlp_hook
-        )
+        )  # type: ignore
 
         resid_hook = f"blocks.{layer}.hook_resid_post"
         resid_dimensions = identity_sae.IdentitySAE(
             model_name, d_model, layer, hook_name=resid_hook
-        )
+        )  # type: ignore
 
         selected_saes = [
             (f"identity_mlp_{model_name}_layer_{layer}", mlp_neurons),
@@ -40,7 +40,7 @@ if __name__ == "__main__":
                 llm_batch_size=llm_batch_size,
                 llm_dtype=llm_dtype,
             ),
-            selected_saes,
+            selected_saes,  # type: ignore
             device,
             api_key,
             "eval_results/autointerp",

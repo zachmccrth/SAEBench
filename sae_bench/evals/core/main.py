@@ -2,51 +2,49 @@
 # flake8: noqa: E501
 # fmt: on
 import argparse
-import time
-from typing import Type, Tuple, Callable, Any, Union, Dict, List, Mapping, Optional
-from dataclasses import asdict
+import gc
 import logging
 import math
-import re
 import os
-import gc
 import subprocess
+import time
 from collections import defaultdict
-from dataclasses import dataclass, field
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass, field
 from functools import partial
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from typing import Any
+
 import einops
 import torch
-from tqdm import tqdm
-from transformer_lens import HookedTransformer
-from transformer_lens.hook_points import HookedRootModule
 from sae_lens.sae import SAE
 from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
 from sae_lens.training.activations_store import ActivationsStore
+from tqdm import tqdm
+from transformer_lens import HookedTransformer
+from transformer_lens.hook_points import HookedRootModule
 
-
+import sae_bench.sae_bench_utils.general_utils as general_utils
+import sae_bench.sae_bench_utils.sae_selection_utils as sae_selection_utils
 from sae_bench.evals.core.eval_config import CoreEvalConfig
 from sae_bench.evals.core.eval_output import (
     CoreEvalOutput,
+    CoreFeatureMetric,
     CoreMetricCategories,
+    MiscMetrics,
     ModelBehaviorPreservationMetrics,
     ModelPerformancePreservationMetrics,
     ReconstructionQualityMetrics,
     ShrinkageMetrics,
     SparsityMetrics,
     TokenStatsMetrics,
-    MiscMetrics,
-    CoreFeatureMetric,
 )
 from sae_bench.sae_bench_utils import (
     get_eval_uuid,
-    get_sae_lens_version,
     get_sae_bench_version,
+    get_sae_lens_version,
 )
-
-import sae_bench.sae_bench_utils.sae_selection_utils as sae_selection_utils
-import sae_bench.sae_bench_utils.general_utils as general_utils
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +69,7 @@ def get_git_hash() -> str:
     try:
         # Ensure the command is run in the directory where .git exists
         git_dir = Path(__file__).resolve().parent.parent  # Adjust if necessary
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: UP022
             ["git", "rev-parse", "--short", "HEAD"],
             cwd=git_dir,
             stdout=subprocess.PIPE,
@@ -284,45 +282,49 @@ def run_evals(
 
     return all_metrics, feature_metrics
 
-def calculate_max_cosine_sim(encoder_DF: torch.Tensor, batch_size: int = 100) -> torch.Tensor:
+
+def calculate_max_cosine_sim(
+    encoder_DF: torch.Tensor, batch_size: int = 100
+) -> torch.Tensor:
     """
-    encoder_DF: Tensor of shape (D, F) 
+    encoder_DF: Tensor of shape (D, F)
                 where D = dimension of each feature
                 and F = number of features
     batch_size: The number of columns processed in each chunk.
-    
+
     Returns:
     max_sims: A tensor of shape (F,) where each entry i is the
               maximum cosine similarity of column i with any other column.
     """
     # 1) Normalize columns so each feature vector has unit norm.
     enc_norm_DF = torch.nn.functional.normalize(encoder_DF, p=2, dim=0)
-    
+
     F_ = enc_norm_DF.shape[1]  # Number of features
-    
+
     max_sims_F = torch.empty(F_, dtype=enc_norm_DF.dtype, device=enc_norm_DF.device)
-    
+
     # 2) Process columns in batches to avoid creating an F x F matrix
     for start in range(0, F_, batch_size):
         end = min(start + batch_size, F_)
-        
+
         chunk_DC = enc_norm_DF[:, start:end]
-        
+
         # 3) Compute cosine similarity between this chunk and ALL columns.
         sims_CF = chunk_DC.t() @ enc_norm_DF
-        
+
         # 4) Ignore self-similarity on the diagonal for columns in [start, end).
         #    We set those diagonal positions to -inf.
         for col_idx in range(start, end):
-            sims_CF[col_idx - start, col_idx] = float('-inf')
-        
+            sims_CF[col_idx - start, col_idx] = float("-inf")
+
         # 5) Take the max over each row in the chunk.
         row_max_sims_C = sims_CF.max(dim=1).values
-        
+
         # Store the result for this batch
         max_sims_F[start:end] = row_max_sims_C
-    
+
     return max_sims_F
+
 
 def get_featurewise_weight_based_metrics(sae: SAE) -> dict[str, Any]:
     unit_norm_encoders = (sae.W_enc / sae.W_enc.norm(dim=0, keepdim=True)).cpu()
@@ -815,8 +817,8 @@ def dict_to_nested(flat_dict: dict[str, Any]) -> defaultdict[Any, Any]:
 
 
 def convert_feature_metrics(
-    flattened_feature_metrics: Dict[str, List[float]],
-) -> List[CoreFeatureMetric]:
+    flattened_feature_metrics: dict[str, list[float]],
+) -> list[CoreFeatureMetric]:
     """Convert feature metrics from parallel lists to list of dicts.
 
     Args:
@@ -866,7 +868,7 @@ def convert_feature_metrics(
 
 
 def save_single_eval_result(
-    result: Dict[str, Any],
+    result: dict[str, Any],
     eval_instance_id: str,
     sae_lens_version: str,
     sae_bench_commit_hash: str,
@@ -921,26 +923,30 @@ def save_single_eval_result(
 
 
 def calculate_misc_metrics(feature_metrics: dict[str, torch.Tensor]) -> dict:
-    average_max_encoder_cosine_sim = torch.Tensor(feature_metrics["max_encoder_cosine_sim"]).mean().item()
-    average_max_decoder_cosine_sim = torch.Tensor(feature_metrics["max_decoder_cosine_sim"]).mean().item()
+    average_max_encoder_cosine_sim = (
+        torch.Tensor(feature_metrics["max_encoder_cosine_sim"]).mean().item()
+    )
+    average_max_decoder_cosine_sim = (
+        torch.Tensor(feature_metrics["max_decoder_cosine_sim"]).mean().item()
+    )
 
     feature_densities_F = torch.Tensor(feature_metrics["feature_density"])
     feature_densities_F = feature_densities_F.float().clone().detach()
 
     frac_alive = (feature_densities_F > 0).float().mean().item()
-    
+
     total_sum = feature_densities_F.sum()
-    
+
     freq_over_1_percent = (feature_densities_F > 0.01).float().mean().item()
     freq_over_10_percent = (feature_densities_F > 0.1).float().mean().item()
-    
+
     # Sum of densities of features > 1%, divided by total sum
     if total_sum > 0:
         norm_sum_1 = feature_densities_F[feature_densities_F > 0.01].sum()
         normalized_freq_over_1_percent = (norm_sum_1 / total_sum).item()
     else:
         normalized_freq_over_1_percent = 0.0
-    
+
     # Sum of densities of features > 10%, divided by total sum
     if total_sum > 0:
         norm_sum_10 = feature_densities_F[feature_densities_F > 0.1].sum()
@@ -958,6 +964,7 @@ def calculate_misc_metrics(feature_metrics: dict[str, torch.Tensor]) -> dict:
         "normalized_freq_over_10_percent": normalized_freq_over_10_percent,
     }
 
+
 def multiple_evals(
     selected_saes: list[tuple[str, str]] | list[tuple[str, SAE]],
     n_eval_reconstruction_batches: int,
@@ -973,7 +980,7 @@ def multiple_evals(
     dtype: str = "float32",
     device: str = "cuda",
     force_rerun: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     assert len(selected_saes) > 0, "No SAEs to evaluate"
 
     eval_results = []
@@ -1001,7 +1008,7 @@ def multiple_evals(
     ):
         sae_id, sae, sparsity = general_utils.load_and_format_sae(
             sae_release, sae_object_or_id, device
-        )
+        )  # type: ignore
         sae = sae.to(device=device, dtype=llm_dtype)
 
         sae_result_path = general_utils.get_results_filepath(
@@ -1031,14 +1038,14 @@ def multiple_evals(
                 )
 
             try:
-                del current_model
+                del current_model  # type: ignore
                 current_model_str = sae.cfg.model_name
                 current_model = load_model()
             except Exception as e:
                 logger.error(f"Failed to load model {sae.cfg.model_name}: {str(e)}")
                 continue  # Skip this SAE and continue with the next one
 
-        assert current_model is not None
+        assert current_model is not None  # type: ignore
 
         try:
             # Create a CoreEvalConfig for this specific evaluation
@@ -1069,7 +1076,10 @@ def multiple_evals(
             )
             def create_activation_store():
                 return ActivationsStore.from_sae(
-                    current_model, sae, context_size=context_size, dataset=dataset
+                    current_model,  # type: ignore
+                    sae,
+                    context_size=context_size,
+                    dataset=dataset,
                 )
 
             activation_store = create_activation_store()
@@ -1099,7 +1109,9 @@ def multiple_evals(
                 compute_featurewise_density_statistics
                 or compute_featurewise_weight_based_metrics
             ):
-                eval_metrics["metrics"]["misc_metrics"] = calculate_misc_metrics(feature_metrics)
+                eval_metrics["metrics"]["misc_metrics"] = calculate_misc_metrics(
+                    feature_metrics
+                )
                 eval_metrics["feature_metrics"] = feature_metrics
 
             # Clean NaN values before saving
@@ -1131,7 +1143,7 @@ def multiple_evals(
     return eval_results
 
 
-def run_evaluations(args: argparse.Namespace) -> List[Dict[str, Any]]:
+def run_evaluations(args: argparse.Namespace) -> list[dict[str, Any]]:
     device = general_utils.setup_environment()
     # Filter SAEs based on regex patterns
     filtered_saes = sae_selection_utils.get_saes_from_regex(
@@ -1155,7 +1167,7 @@ def run_evaluations(args: argparse.Namespace) -> List[Dict[str, Any]]:
         n_eval_reconstruction_batches=args.n_eval_reconstruction_batches,
         n_eval_sparsity_variance_batches=args.n_eval_sparsity_variance_batches,
         eval_batch_size_prompts=args.batch_size_prompts,
-        compute_featurewise_density_statistics=True, # TODO: Don't hardcode this
+        compute_featurewise_density_statistics=True,  # TODO: Don't hardcode this
         compute_featurewise_weight_based_metrics=True,
         exclude_special_tokens_from_reconstruction=args.exclude_special_tokens_from_reconstruction,
         dataset=args.dataset,

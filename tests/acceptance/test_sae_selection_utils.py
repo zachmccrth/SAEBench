@@ -1,11 +1,13 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
+
 from sae_bench.sae_bench_utils.sae_selection_utils import (
     all_loadable_saes,
     get_saes_from_regex,
     print_all_sae_releases,
     print_release_details,
 )
-from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture

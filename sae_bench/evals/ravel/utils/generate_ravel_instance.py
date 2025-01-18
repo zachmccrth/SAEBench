@@ -2,7 +2,6 @@
 
 import collections
 import random
-import re
 from dataclasses import dataclass
 
 import numpy as np
@@ -18,7 +17,7 @@ class RAVELMetadata:
     attr_prompt_to_split: dict
     entity_prompt_to_split: dict
     prompt_to_output: dict
-    split_to_entities: dict = None
+    split_to_entities: dict = None  # type: ignore
 
     def get_entities(self, split):
         if not self.split_to_entities:
@@ -52,7 +51,7 @@ def gen_context_test_split(metadata, extract_label_fn, filter_example_fn, first_
             for entity in metadata.get_entities("train")
         ]
         if len(base_task_inputs) < 5:
-            print(f"SKIP - NOT ENOUGH BASE EXAMPLES: {subsplit} {prompt}")
+            print(f"SKIP - NOT ENOUGH BASE EXAMPLES: {subsplit} {prompt}")  # type: ignore
             continue
         random.shuffle(base_task_inputs)
         # We include three types of source prompts:

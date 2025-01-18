@@ -1,11 +1,13 @@
-from sae_bench import sae_bench_utils
+import re
+import uuid
+
+import pytest
+import torch
+
 import sae_bench.sae_bench_utils.general_utils as general_utils
 import sae_bench.sae_bench_utils.indexing_utils as indexing_utils
 import sae_bench.sae_bench_utils.testing_utils as testing_utils
-import torch
-import pytest
-import re
-import uuid
+from sae_bench import sae_bench_utils
 
 
 def test_average_results():
@@ -65,9 +67,9 @@ def test_indexing_utils():
     x = torch.arange(40).reshape((2, 20))
     x[0, 10] += 50  # 2nd highest value
     x[0, 11] += 100  # highest value
-    x[
-        1, 1
-    ] += 150  # not inside buffer (it's less than 3 from the start of the sequence)
+    x[1, 1] += (
+        150  # not inside buffer (it's less than 3 from the start of the sequence)
+    )
     top_indices = indexing_utils.get_k_largest_indices(
         x, k=2, buffer=3, no_overlap=False
     )
