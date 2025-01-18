@@ -228,6 +228,10 @@ if __name__ == "__main__":
     else:
         api_key = None
 
+    if "unlearning" in eval_types:
+        if not os.path.exists("./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"):
+            raise Exception("Please download bio-forget-corpus.jsonl for unlearning evaluation")
+
     # If evaluating multiple SAEs on the same layer, set save_activations to True
     # This will require at least 100GB of disk space
     save_activations = False

@@ -333,6 +333,9 @@ if __name__ == "__main__":
     device = general_utils.setup_environment()
 
     # Select your eval types here.
+    # Note: Unlearning is not recommended for models with < 2B parameters and we recommend an instruct tuned model
+    # Unlearning will also require requesting permission for the WMDP dataset (see unlearning/README.md)
+    # Absorption not recommended for models < 2B parameters
     eval_types = [
         "absorption",
         "core",
@@ -342,6 +345,19 @@ if __name__ == "__main__":
         "autointerp",
         # "unlearning",
     ]
+
+    if "autointerp" in eval_types:
+        try:
+            with open("openai_api_key.txt") as f:
+                api_key = f.read().strip()
+        except FileNotFoundError:
+            raise Exception("Please create openai_api_key.txt with your API key")
+    else:
+        api_key = None
+
+    if "unlearning" in eval_types:
+        if not os.path.exists("./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"):
+            raise Exception("Please download bio-forget-corpus.jsonl for unlearning evaluation")
 
     repos = [
         (
@@ -368,15 +384,6 @@ if __name__ == "__main__":
         # Note: Unlearning is not recommended for models with < 2B parameters and we recommend an instruct tuned model
         # Unlearning will also require requesting permission for the WMDP dataset (see unlearning/README.md)
         # Absorption not recommended for models < 2B parameters
-
-        if "autointerp" in eval_types:
-            try:
-                with open("openai_api_key.txt") as f:
-                    api_key = f.read().strip()
-            except FileNotFoundError:
-                raise Exception("Please create openai_api_key.txt with your API key")
-        else:
-            api_key = None
 
         run_evals(
             repo_id=repo_id,
