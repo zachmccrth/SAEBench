@@ -104,6 +104,26 @@ You can deterministically replicate the training of our SAEs using scripts provi
 
 If evaluating your own SAEs, we recommend using the graphing cells in `sae_bench_demo.ipynb`. To replicate all SAE Bench plots, refer to `graphing.ipynb`. In this notebook, we download all SAE Bench data and create a variety of plots.
 
+## Computational Requirements
+
+The computational requirements for running SAEBench evaluations were measured on an NVIDIA RTX 3090 GPU using 16K width SAEs trained on the Gemma-2-2B model. The table below breaks down the timing for each evaluation type into two components: an initial setup phase and the per-SAE evaluation time. 
+
+- **Setup Phase**: Includes operations like precomputing model activations, training probes, or other one-time preprocessing steps which can be reused across multiple SAE evaluations.
+- **Per-SAE Evaluation Time**: The time required to evaluate a single SAE once the setup is complete.
+
+The total evaluation time for a single SAE across all benchmarks is approximately **65 minutes**, with an additional **107 minutes** of setup time. Note that actual runtimes may vary significantly based on factors such as SAE dictionary size, base model, and GPU selection.
+
+| Evaluation Type   | Avg Time per SAE (min) | Setup Time (min) |
+|-------------------|-------------------------|------------------|
+| Absorption        | 26                     | 33               |
+| Core              | 9                      | 0                |
+| SCR               | 6                      | 22               |
+| TPP               | 2                      | 5                |
+| Sparse Probing    | 3                      | 15               |
+| Auto-Interp       | 9                      | 0                |
+| Unlearning        | 10                     | 33               |
+| **Total**         | **65**                 | **107**          |
+
 ## Development
 
 This project uses [Poetry](https://python-poetry.org/) for dependency management and packaging.
