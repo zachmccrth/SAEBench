@@ -164,10 +164,16 @@
           "title": "AutoInterp Score",
           "type": "number",
           "ui_default_display": true
+        },
+        "autointerp_std_dev": {
+          "description": "AutoInterp detection score standard deviation over all tested features",
+          "title": "AutoInterp Standard Deviation",
+          "type": "number"
         }
       },
       "required": [
-        "autointerp_score"
+        "autointerp_score",
+        "autointerp_std_dev"
       ],
       "title": "AutoInterpMetrics",
       "type": "object"

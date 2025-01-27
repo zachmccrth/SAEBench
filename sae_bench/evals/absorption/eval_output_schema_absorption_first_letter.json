@@ -74,9 +74,15 @@
     },
     "AbsorptionMeanMetrics": {
       "properties": {
-        "mean_absorption_score": {
-          "description": "Average of the absorption scores across all letters",
-          "title": "Mean Absorption Score",
+        "mean_absorption_fraction_score": {
+          "description": "Average of the absorption fraction scores across all letters",
+          "title": "Mean Absorption Fraction Score",
+          "type": "number",
+          "ui_default_display": true
+        },
+        "mean_full_absorption_score": {
+          "description": "Average of the full absorption scores across all letters",
+          "title": "Mean Full Absorption Score",
           "type": "number",
           "ui_default_display": true
         },
@@ -85,11 +91,33 @@
           "title": "Mean Number of Split Features",
           "type": "number",
           "ui_default_display": true
+        },
+        "std_dev_absorption_fraction_score": {
+          "description": "Standard deviation of the absorption fraction scores across all letters",
+          "title": "Standard Deviation of Absorption Fraction Score",
+          "type": "number",
+          "ui_default_display": true
+        },
+        "std_dev_full_absorption_score": {
+          "description": "Standard deviation of the full absorption scores across all letters",
+          "title": "Standard Deviation of Full Absorption Score",
+          "type": "number",
+          "ui_default_display": true
+        },
+        "std_dev_num_split_features": {
+          "description": "Standard deviation of the number of split features across all letters",
+          "title": "Standard Deviation of Number of Split Features",
+          "type": "number",
+          "ui_default_display": true
         }
       },
       "required": [
-        "mean_absorption_score",
-        "mean_num_split_features"
+        "mean_absorption_fraction_score",
+        "mean_full_absorption_score",
+        "mean_num_split_features",
+        "std_dev_absorption_fraction_score",
+        "std_dev_full_absorption_score",
+        "std_dev_num_split_features"
       ],
       "title": "AbsorptionMeanMetrics",
       "type": "object"
@@ -116,14 +144,19 @@
           "title": "First Letter",
           "type": "string"
         },
-        "absorption_rate": {
+        "mean_absorption_fraction": {
           "description": "",
-          "title": "Absorption Rate",
+          "title": "Mean Absorption Fraction",
           "type": "number"
         },
-        "num_absorption": {
+        "full_absorption_rate": {
           "description": "",
-          "title": "Num Absorption",
+          "title": "Rate of Full Absorption",
+          "type": "number"
+        },
+        "num_full_absorption": {
+          "description": "",
+          "title": "Num Full Absorption",
           "type": "integer"
         },
         "num_probe_true_positives": {
@@ -139,8 +172,9 @@
       },
       "required": [
         "first_letter",
-        "absorption_rate",
-        "num_absorption",
+        "mean_absorption_fraction",
+        "full_absorption_rate",
+        "num_full_absorption",
         "num_probe_true_positives",
         "num_split_features"
       ],

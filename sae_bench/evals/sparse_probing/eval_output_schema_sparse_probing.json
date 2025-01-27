@@ -41,10 +41,17 @@
           "type": "integer"
         },
         "llm_batch_size": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "default": null,
           "description": "LLM batch size. This is set by default in the main script, or it can be set with a command line argument.",
-          "title": "LLM Batch Size",
-          "type": "integer"
+          "title": "LLM Batch Size"
         },
         "llm_dtype": {
           "default": "",

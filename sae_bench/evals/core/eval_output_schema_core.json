@@ -133,6 +133,16 @@
           "description": "Cosine similarity between encoder and decoder weights for each feature",
           "title": "Encoder-Decoder Cosine Similarity",
           "type": "number"
+        },
+        "max_decoder_cosine_sim": {
+          "description": "Maximum cosine similarity with any other feature's decoder weights",
+          "title": "Max Decoder Cosine Similarity",
+          "type": "number"
+        },
+        "max_encoder_cosine_sim": {
+          "description": "Maximum cosine similarity with any other feature's encoder weights",
+          "title": "Max Encoder Cosine Similarity",
+          "type": "number"
         }
       },
       "required": [
@@ -141,7 +151,9 @@
         "consistent_activation_heuristic",
         "encoder_bias",
         "encoder_norm",
-        "encoder_decoder_cosine_sim"
+        "encoder_decoder_cosine_sim",
+        "max_decoder_cosine_sim",
+        "max_encoder_cosine_sim"
       ],
       "title": "CoreFeatureMetric",
       "type": "object"
@@ -177,6 +189,11 @@
           "$ref": "#/$defs/TokenStatsMetrics",
           "description": "Statistics about the number of tokens used in evaluation",
           "title": "Token Statistics"
+        },
+        "misc_metrics": {
+          "$ref": "#/$defs/MiscMetrics",
+          "description": "Miscellaneous metrics",
+          "title": "Miscellaneous Metrics"
         }
       },
       "required": [
@@ -185,9 +202,60 @@
         "reconstruction_quality",
         "shrinkage",
         "sparsity",
-        "token_stats"
+        "token_stats",
+        "misc_metrics"
       ],
       "title": "CoreMetricCategories",
+      "type": "object"
+    },
+    "MiscMetrics": {
+      "properties": {
+        "freq_over_1_percent": {
+          "description": "Proportion of tokens that activate each feature more than 1% of the time",
+          "title": "Activation Frequency Over 1%",
+          "type": "number"
+        },
+        "freq_over_10_percent": {
+          "description": "Proportion of tokens that activate each feature more than 10% of the time",
+          "title": "Activation Frequency Over 10%",
+          "type": "number"
+        },
+        "normalized_freq_over_1_percent": {
+          "description": "Sum of > 1% activation frequency probabilities, normalized by the sum of all feature probabilities",
+          "title": "Normalized Activation Frequency Over 1%",
+          "type": "number"
+        },
+        "normalized_freq_over_10_percent": {
+          "description": "Sum of > 10% activation frequency probabilities, normalized by the sum of all feature probabilities",
+          "title": "Normalized Activation Frequency Over 10%",
+          "type": "number"
+        },
+        "average_max_encoder_cosine_sim": {
+          "description": "Average of the maximum cosine similarity with any other feature's encoder weights",
+          "title": "Average Max Encoder Cosine Similarity",
+          "type": "number"
+        },
+        "average_max_decoder_cosine_sim": {
+          "description": "Average of the maximum cosine similarity with any other feature's decoder weights",
+          "title": "Average Max Decoder Cosine Similarity",
+          "type": "number"
+        },
+        "frac_alive": {
+          "description": "Fraction of features that fired at least once during evaluation. This will likely be an underestimation due to a limited amount of tokens",
+          "title": "Fraction of Alive Features",
+          "type": "number"
+        }
+      },
+      "required": [
+        "freq_over_1_percent",
+        "freq_over_10_percent",
+        "normalized_freq_over_1_percent",
+        "normalized_freq_over_10_percent",
+        "average_max_encoder_cosine_sim",
+        "average_max_decoder_cosine_sim",
+        "frac_alive"
+      ],
+      "title": "MiscMetrics",
       "type": "object"
     },
     "ModelBehaviorPreservationMetrics": {
