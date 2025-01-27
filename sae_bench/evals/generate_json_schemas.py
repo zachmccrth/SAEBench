@@ -21,7 +21,9 @@ def main():
             if file == "eval_output.py":
                 print(file)
                 module_path = os.path.relpath(os.path.join(root, file), base_dir)
-                module_name = module_path.replace("/", ".").replace(".py", "")
+                module_name = "sae_bench." + module_path.replace("/", ".").replace(
+                    ".py", ""
+                )
 
                 try:
                     module = __import__(module_name, fromlist=[""])
