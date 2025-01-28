@@ -71,6 +71,7 @@ class ScrMetrics(BaseMetrics):
         None,
         title="SCR Metric, Top 20 SAE latents",
         description="SCR Metric (selecting dir1 if inital profession accuracy is lower than initial gender accuracy, else dir2) ablating the top 20 SAE latents",
+        json_schema_extra=DEFAULT_DISPLAY,
     )
     scr_dir2_threshold_20: float | None = Field(
         None,
@@ -324,6 +325,7 @@ class TppMetrics(BaseMetrics):
         None,
         title="TPP Metric, Top 20 SAE latents",
         description="TPP metric when ablating the top 20 SAE latents",
+        json_schema_extra=DEFAULT_DISPLAY,
     )
     tpp_threshold_20_intended_diff_only: float | None = Field(
         None,
