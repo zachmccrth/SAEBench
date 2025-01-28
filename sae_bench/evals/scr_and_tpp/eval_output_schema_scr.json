@@ -298,7 +298,8 @@
           ],
           "default": null,
           "description": "SCR Metric (selecting dir1 if inital profession accuracy is lower than initial gender accuracy, else dir2) ablating the top 20 SAE latents",
-          "title": "SCR Metric, Top 20 SAE latents"
+          "title": "SCR Metric, Top 20 SAE latents",
+          "ui_default_display": true
         },
         "scr_dir2_threshold_20": {
           "anyOf": [
