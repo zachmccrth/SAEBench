@@ -95,20 +95,17 @@
         "std_dev_absorption_fraction_score": {
           "description": "Standard deviation of the absorption fraction scores across all letters",
           "title": "Standard Deviation of Absorption Fraction Score",
-          "type": "number",
-          "ui_default_display": true
+          "type": "number"
         },
         "std_dev_full_absorption_score": {
           "description": "Standard deviation of the full absorption scores across all letters",
           "title": "Standard Deviation of Full Absorption Score",
-          "type": "number",
-          "ui_default_display": true
+          "type": "number"
         },
         "std_dev_num_split_features": {
           "description": "Standard deviation of the number of split features across all letters",
           "title": "Standard Deviation of Number of Split Features",
-          "type": "number",
-          "ui_default_display": true
+          "type": "number"
         }
       },
       "required": [

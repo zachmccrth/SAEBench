@@ -34,17 +34,14 @@ class AbsorptionMeanMetrics(BaseMetrics):
     std_dev_absorption_fraction_score: float = Field(
         title="Standard Deviation of Absorption Fraction Score",
         description="Standard deviation of the absorption fraction scores across all letters",
-        json_schema_extra=DEFAULT_DISPLAY,
     )
     std_dev_full_absorption_score: float = Field(
         title="Standard Deviation of Full Absorption Score",
         description="Standard deviation of the full absorption scores across all letters",
-        json_schema_extra=DEFAULT_DISPLAY,
     )
     std_dev_num_split_features: float = Field(
         title="Standard Deviation of Number of Split Features",
         description="Standard deviation of the number of split features across all letters",
-        json_schema_extra=DEFAULT_DISPLAY,
     )
 
 
