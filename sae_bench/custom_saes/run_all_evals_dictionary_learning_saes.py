@@ -84,9 +84,7 @@ def get_all_hf_repo_autoencoders(
     repo_locations = []
 
     for config in config_locations:
-        repo_location = config.split(f"{download_location}/")[1].split("/config.json")[
-            0
-        ]
+        repo_location = config.split(f"{download_location}/")[1].split("/config.json")[0]
         repo_locations.append(repo_location)
 
     return repo_locations
@@ -297,12 +295,8 @@ def run_evals(
             print("Skipping autointerp evaluation due to missing API key")
             continue
         if eval_type == "unlearning":
-            if not os.path.exists(
-                "./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"
-            ):
-                print(
-                    "Skipping unlearning evaluation due to missing bio-forget-corpus.jsonl"
-                )
+            if not os.path.exists("./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"):
+                print("Skipping unlearning evaluation due to missing bio-forget-corpus.jsonl")
                 continue
 
         print(f"\n\n\nRunning {eval_type} evaluation\n\n\n")
@@ -331,6 +325,13 @@ def run_evals(
 
 
 if __name__ == "__main__":
+    """
+    This will run all evaluations on all selected dictionary_learning SAEs within the specified HuggingFace repos.
+    Set the model_name(s) and repo_id(s) in `repos`.
+    Also specify the eval types you want to run in `eval_types`.
+    You can also specify any keywords to exclude/include in the SAE filenames using `exclude_keywords` and `include_keywords`.
+    NOTE: If your model (with associated model_name and batch sizes) is not in the MODEL_CONFIGS dictionary, you will need to add it.
+    """
     RANDOM_SEED = 42
 
     device = general_utils.setup_environment()
@@ -359,12 +360,8 @@ if __name__ == "__main__":
         api_key = None
 
     if "unlearning" in eval_types:
-        if not os.path.exists(
-            "./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"
-        ):
-            raise Exception(
-                "Please download bio-forget-corpus.jsonl for unlearning evaluation"
-            )
+        if not os.path.exists("./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"):
+            raise Exception("Please download bio-forget-corpus.jsonl for unlearning evaluation")
 
     repos = [
         (
@@ -373,11 +370,12 @@ if __name__ == "__main__":
         ),
         ("adamkarvonen/saebench_gemma-2-2b_width-2pow14_date-0104", "gemma-2-2b"),
     ]
+    exclude_keywords = ["checkpoints"]
+    include_keywords = []
 
     for repo_id, model_name in repos:
         print(f"\n\n\nEvaluating {model_name} with {repo_id}\n\n\n")
 
-        # model_name = "gemma-2-2b"
         llm_batch_size = MODEL_CONFIGS[model_name]["batch_size"]
         str_dtype = MODEL_CONFIGS[model_name]["dtype"]
         torch_dtype = general_utils.str_to_dtype(str_dtype)
@@ -385,12 +383,8 @@ if __name__ == "__main__":
         sae_locations = get_all_hf_repo_autoencoders(repo_id)
 
         sae_locations = general_utils.filter_keywords(
-            sae_locations, exclude_keywords=["checkpoints"], include_keywords=[]
+            sae_locations, exclude_keywords=exclude_keywords, include_keywords=include_keywords
         )
-
-        # Note: Unlearning is not recommended for models with < 2B parameters and we recommend an instruct tuned model
-        # Unlearning will also require requesting permission for the WMDP dataset (see unlearning/README.md)
-        # Absorption not recommended for models < 2B parameters
 
         run_evals(
             repo_id=repo_id,

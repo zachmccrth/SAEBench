@@ -45,3 +45,5 @@ evals/ravel/models/
 **/dev/
 openai_api_key.txt
 dist/
+
+*.png

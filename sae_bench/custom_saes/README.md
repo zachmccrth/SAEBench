@@ -9,8 +9,46 @@ There are a few requirements for the SAE object. If your SAE object inherits `Ba
 
 Refer to `SAEBench/sae_bench_demo.ipynb` for an example of how to compare a custom SAE with a baseline SAE and create some graphs. There is also a cell demonstrating how to run all evals on a selection of SAEs.
 
-If your SAEs are trained with the [dictionary_learning repo](https://github.com/saprmarks/dictionary_learning), you can evaluate your SAEs by passing in the name of the HuggingFace repo containing your SAEs. Refer to `SAEBench/custom_saes/run_all_evals_dictionary_learning_saes.py`.
+If your SAEs are trained with the [dictionary_learning repo](https://github.com/saprmarks/dictionary_learning), you can evaluate your SAEs on all evaluations by setting the HuggingFace repo name and model name. Refer to the docstring in `SAEBench/custom_saes/run_all_evals_dictionary_learning_saes.py` to learn more.
 
-If you want a python script to evaluate your custom SAEs, refer to `run_all_evals_custom_saes.py`.
+If you want a python script to evaluate your custom SAEs, refer to `run_all_evals_custom_saes.py`. You will have to handle loading the custom SAEs. There's an example provided.
 
 If there are any pain points when using this repo with custom SAEs, please do not hesitate to reach out or raise an issue.
+
+# Evaluation Options
+
+If you want a more granular approach to running evaluations, we provide two options.
+
+1. **Using Evaluation Templates**:
+
+   - Use the secondary `if __name__ == "__main__"` block in each `main.py`
+   - Results are saved in SAE Bench format for easy visualization
+   - Compatible with provided plotting tools
+
+2. **Direct Function Calls**:
+   - Use `run_eval_single_sae()` in each `main.py`
+   - Simpler interface requiring only model, SAE, and config values
+   - Graphing will require manual formatting
+
+# SAE Bench Baseline Suite
+
+We provide a suite of baseline SAEs. We have the following 7 SAE varieties:
+
+- ReLU (Anthropic April Update)
+- TopK
+- BatchTopK
+- JumpReLU
+- Gated
+- P-anneal
+- Matryoshka BatchTopK
+
+Trained across 3 widths (4k, 16k, and 65k), 6 sparsities (~20 to ~640), on layer 8 of Pythia-160M and layer 12 of Gemma-2-2B. Additionally, we have checkpoints throughout training for TopK and RelU variants for Gemma-2-2B 16k and 65k widths. The SAEs are located in the following HuggingFace repos:
+
+- [Pythia-160M 4k width](https://huggingface.co/adamkarvonen/saebench_pythia-160m-deduped_width-2pow12_date-0108)
+- [Pythia-160M 16k width](https://huggingface.co/adamkarvonen/saebench_pythia-160m-deduped_width-2pow14_date-0108)
+- [Pythia-160M 65k width](https://huggingface.co/adamkarvonen/saebench_pythia-160m-deduped_width-2pow16_date-0108)
+- [Gemma-2-2B 4k width](https://huggingface.co/adamkarvonen/saebench_gemma-2-2b_width-2pow12_date-0108)
+- [Gemma-2-2B 16k width](https://huggingface.co/canrager/saebench_gemma-2-2b_width-2pow14_date-0107)
+- [Gemma-2-2B 65k width](https://huggingface.co/canrager/saebench_gemma-2-2b_width-2pow16_date-0107)
+
+All results from these SAEs, plus PCA / residual stream baselines, are contained [here](https://huggingface.co/datasets/adamkarvonen/sae_bench_results_0125).
