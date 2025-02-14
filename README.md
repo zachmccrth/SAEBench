@@ -186,6 +186,14 @@ If you use VSCode, install the Ruff plugin, and add the following to your `.vsco
 }
 ```
 
+### Pre-commit hook
+
+There's a pre-commit hook that will run ruff and pyright on each commit. To install it, run:
+
+```bash
+poetry run pre-commit install
+```
+
 ### Updating Eval Output Schemas
 
 Eval output structures / data types are under the `eval_output.py` file in each eval directory. If any of the `eval_output.py` files are updated, it's a good idea to run `python sae_bench/evals/generate_json_schemas.py` to make the json schemas match them as well.
