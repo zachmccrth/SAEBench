@@ -378,7 +378,10 @@ def get_scr_plotting_dict(
                 combined_class_name
             ]
 
-            scr_score = (changed_acc - original_acc) / (clean_acc - original_acc)
+            if (clean_acc - original_acc) < 0.001:
+                scr_score = 0
+            else:
+                scr_score = (changed_acc - original_acc) / (clean_acc - original_acc)
 
             print(
                 f"dir: {dir}, original_acc: {original_acc}, clean_acc: {clean_acc}, changed_acc: {changed_acc}, scr_score: {scr_score}"
@@ -806,7 +809,10 @@ def run_eval(
             continue
 
         artifacts_folder = os.path.join(
-            artifacts_base_folder, eval_type, config.model_name, sae.cfg.hook_name
+            artifacts_base_folder,
+            eval_type,
+            config.model_name,
+            sae.cfg.hook_name,
         )
 
         scr_or_tpp_results, per_dataset_class_results = run_eval_single_sae(
