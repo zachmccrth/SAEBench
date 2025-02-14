@@ -73,6 +73,7 @@ def load_probe(
     probe = torch.load(
         Path(probes_dir) / f"{model_name}" / f"layer_{layer}" / "probe.pth",
         map_location=device,
+        weights_only=False,
     ).to(dtype=dtype)
     return probe
 
