@@ -164,7 +164,7 @@ def train_k_sparse_probes(
                     ).fit(train_k_x, (train_k_y == label).astype(np.int64))
                     probe = KSparseProbe(
                         weight=torch.tensor(sk_probe.coef_[0]).float(),
-                        bias=torch.tensor(sk_probe.intercept_[0]).float(),
+                        bias=torch.tensor(sk_probe.intercept_[0]).float(),  # type: ignore
                         feature_ids=sparse_feat_ids,
                     )
                     results[k][label] = probe

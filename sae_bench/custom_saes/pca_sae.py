@@ -48,7 +48,7 @@ class PCASAE(base_sae.BaseSAE):
         """Save the encoder and decoder to a file."""
         torch.save(
             {
-                "W_enc": self.W_enc.data,
+                "W_enc": self.W_enc.data,  # type: ignore
                 "W_dec": self.W_dec.data,
                 "mean": self.mean.data,
             },
@@ -58,7 +58,7 @@ class PCASAE(base_sae.BaseSAE):
     def load_from_file(self, file_path: str):
         """Load the encoder and decoder from a file."""
         state_dict = torch.load(file_path, map_location=self.device)
-        self.W_enc.data = state_dict["W_enc"]
+        self.W_enc.data = state_dict["W_enc"]  # type: ignore
         self.W_dec.data = state_dict["W_dec"]
         self.mean.data = state_dict["mean"]
         self.normalize_decoder()
@@ -137,7 +137,7 @@ def fit_PCA(
 
     # Set the learned components
     pca.mean.data = torch.tensor(ipca.mean_, dtype=torch.float32, device="cpu")
-    pca.W_enc.data = torch.tensor(ipca.components_, dtype=torch.float32, device="cpu")
+    pca.W_enc.data = torch.tensor(ipca.components_, dtype=torch.float32, device="cpu")  # type: ignore
     pca.W_dec.data = torch.tensor(ipca.components_.T, dtype=torch.float32, device="cpu")  # type: ignore
 
     pca.save_state_dict(f"pca_{pca.cfg.model_name}_{pca.cfg.hook_name}.pt")
@@ -215,7 +215,7 @@ def fit_PCA_gpu(
 
     # Set the learned components
     pca.mean.data = pca_mean.to(dtype=torch.float32, device="cpu")
-    pca.W_enc.data = components.float().to(dtype=torch.float32, device="cpu")
+    pca.W_enc.data = components.float().to(dtype=torch.float32, device="cpu")  # type: ignore
     pca.W_dec.data = components.T.float().to(dtype=torch.float32, device="cpu")
 
     pca.save_state_dict(f"pca_{pca.cfg.model_name}_{pca.cfg.hook_name}.pt")

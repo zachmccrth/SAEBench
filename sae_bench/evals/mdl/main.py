@@ -104,7 +104,7 @@ def calculate_dl(
     float_entropy_F = torch.zeros(num_features, device=device, dtype=torch.float32)
     bool_entropy_F = torch.zeros(num_features, device=device, dtype=torch.float32)
 
-    x_BSN = activations_store.get_buffer(config.sae_batch_size)
+    x_BSN = activations_store.get_buffer(config.sae_batch_size)[0]
     feature_activations_BsF = sae.encode(x_BSN).squeeze()
 
     if feature_activations_BsF.ndim == 2:
@@ -235,7 +235,7 @@ def check_quantised_features_reach_mse_threshold(
     mse_losses: list[torch.Tensor] = []
 
     for i in range(1):
-        x_BSN = activations_store.get_buffer(config.sae_batch_size)
+        x_BSN = activations_store.get_buffer(config.sae_batch_size)[0]
         feature_activations_BSF = sae.encode(x_BSN).squeeze()
 
         if k is not None:
@@ -337,7 +337,9 @@ def run_eval_single_sae(
         max_activations_1F = torch.zeros(1, num_features, device=device) + 100
 
         for _ in range(10):
-            neuron_activations_BSN = activations_store.get_buffer(config.sae_batch_size)
+            neuron_activations_BSN = activations_store.get_buffer(
+                config.sae_batch_size
+            )[0]
 
             feature_activations_BsF = sae.encode(neuron_activations_BSN).squeeze()
 
