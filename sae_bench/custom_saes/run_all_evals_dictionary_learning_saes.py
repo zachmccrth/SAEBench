@@ -84,7 +84,9 @@ def get_all_hf_repo_autoencoders(
     repo_locations = []
 
     for config in config_locations:
-        repo_location = config.split(f"{download_location}/")[1].split("/config.json")[0]
+        repo_location = config.split(f"{download_location}/")[1].split("/config.json")[
+            0
+        ]
         repo_locations.append(repo_location)
 
     return repo_locations
@@ -295,8 +297,12 @@ def run_evals(
             print("Skipping autointerp evaluation due to missing API key")
             continue
         if eval_type == "unlearning":
-            if not os.path.exists("./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"):
-                print("Skipping unlearning evaluation due to missing bio-forget-corpus.jsonl")
+            if not os.path.exists(
+                "./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"
+            ):
+                print(
+                    "Skipping unlearning evaluation due to missing bio-forget-corpus.jsonl"
+                )
                 continue
 
         print(f"\n\n\nRunning {eval_type} evaluation\n\n\n")
@@ -331,6 +337,8 @@ if __name__ == "__main__":
     Also specify the eval types you want to run in `eval_types`.
     You can also specify any keywords to exclude/include in the SAE filenames using `exclude_keywords` and `include_keywords`.
     NOTE: If your model (with associated model_name and batch sizes) is not in the MODEL_CONFIGS dictionary, you will need to add it.
+    This relies on each SAE being located in a folder which contains an ae.pt file and a config.json file (which is the default save format in dictionary_learning).
+    Running this script as is should run SAE Bench Pythia and Gemma SAEs.
     """
     RANDOM_SEED = 42
 
@@ -360,15 +368,19 @@ if __name__ == "__main__":
         api_key = None
 
     if "unlearning" in eval_types:
-        if not os.path.exists("./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"):
-            raise Exception("Please download bio-forget-corpus.jsonl for unlearning evaluation")
+        if not os.path.exists(
+            "./sae_bench/evals/unlearning/data/bio-forget-corpus.jsonl"
+        ):
+            raise Exception(
+                "Please download bio-forget-corpus.jsonl for unlearning evaluation"
+            )
 
     repos = [
         (
-            "adamkarvonen/saebench_pythia-160m-deduped_width-2pow14_date-0104",
+            "adamkarvonen/saebench_pythia-160m-deduped_width-2pow14_date-0108",
             "pythia-160m-deduped",
         ),
-        ("adamkarvonen/saebench_gemma-2-2b_width-2pow14_date-0104", "gemma-2-2b"),
+        ("canrager/saebench_gemma-2-2b_width-2pow14_date-0107", "gemma-2-2b"),
     ]
     exclude_keywords = ["checkpoints"]
     include_keywords = []
@@ -383,7 +395,9 @@ if __name__ == "__main__":
         sae_locations = get_all_hf_repo_autoencoders(repo_id)
 
         sae_locations = general_utils.filter_keywords(
-            sae_locations, exclude_keywords=exclude_keywords, include_keywords=include_keywords
+            sae_locations,
+            exclude_keywords=exclude_keywords,
+            include_keywords=include_keywords,
         )
 
         run_evals(
