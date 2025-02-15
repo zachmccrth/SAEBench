@@ -253,7 +253,7 @@ def train_probe_gpu(
     print(f"Training probe with dim: {dim}, device: {device}, dtype: {model_dtype}")
 
     probe = Probe(dim, model_dtype).to(device)
-    optimizer = torch.optim.AdamW(probe.parameters(), lr=lr)
+    optimizer = torch.optim.AdamW(probe.parameters(), lr=lr)  # type: ignore
     criterion = nn.BCEWithLogitsLoss()
 
     best_test_accuracy = 0.0

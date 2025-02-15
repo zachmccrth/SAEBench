@@ -14,7 +14,7 @@ classifiers = ["Topic :: Scientific/Engineering :: Artificial Intelligence"]
 
 [tool.poetry.dependencies]
 python = "^3.10,"
-sae_lens = ">=4.4.2"
+sae_lens = ">=5.4.0"
 transformer-lens = ">=2.0.0"
 torch = ">=2.1.0"
 einops = ">=0.8.0"
