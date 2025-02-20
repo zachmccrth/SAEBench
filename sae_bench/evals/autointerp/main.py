@@ -55,6 +55,10 @@ def str_bool(b: bool) -> str:
     return "Y" if b else ""
 
 
+def escape_slash(s: str) -> str:
+    return s.replace("/", "_")
+
+
 class Example:
     """
     Data for a single example sequence.
@@ -523,7 +527,7 @@ def run_eval_single_sae(
 
     os.makedirs(artifacts_folder, exist_ok=True)
 
-    tokens_filename = f"{config.model_name}_{config.total_tokens}_tokens_{config.llm_context_size}_ctx.pt"
+    tokens_filename = f"{escape_slash(config.model_name)}_{config.total_tokens}_tokens_{config.llm_context_size}_ctx.pt"
     tokens_path = os.path.join(artifacts_folder, tokens_filename)
 
     if os.path.exists(tokens_path):
