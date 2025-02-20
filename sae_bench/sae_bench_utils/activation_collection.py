@@ -80,7 +80,7 @@ def get_llm_activations(
 
         if mask_bos_pad_eos_tokens:
             attn_mask_BL = get_bos_pad_eos_mask(tokens_BL, model.tokenizer)
-            acts_BLD = acts_BLD * attn_mask_BL[:, :, None]
+            acts_BLD = acts_BLD * attn_mask_BL[:, :, None]  # type: ignore
 
         all_acts_BLD.append(acts_BLD)
 
@@ -375,7 +375,7 @@ def encode_precomputed_activations(
                 sae_act_BLF = sae_act_BLF[:, :, selected_latents]
 
             if mask_bos_pad_eos_tokens:
-                attn_mask_BL = get_bos_pad_eos_mask(tokens_BL, sae.model.tokenizer)
+                attn_mask_BL = get_bos_pad_eos_mask(tokens_BL, sae.model.tokenizer)  # type: ignore
             else:
                 attn_mask_BL = torch.ones_like(tokens_BL, dtype=torch.bool)
 

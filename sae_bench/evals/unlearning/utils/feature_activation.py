@@ -95,7 +95,7 @@ def gather_residual_activations(model: HookedTransformer, target_layer: int, inp
         target_act = outputs[0]
         return outputs
 
-    handle = model.model.layers[target_layer].register_forward_hook(
+    handle = model.model.layers[target_layer].register_forward_hook(  # type: ignore
         gather_target_act_hook
     )
     _ = model.forward(inputs)  # type: ignore

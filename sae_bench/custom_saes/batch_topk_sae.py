@@ -8,6 +8,9 @@ import sae_bench.custom_saes.base_sae as base_sae
 
 
 class BatchTopKSAE(base_sae.BaseSAE):
+    threshold: torch.Tensor
+    k: torch.Tensor
+
     def __init__(
         self,
         d_in: int,
@@ -47,7 +50,7 @@ class BatchTopKSAE(base_sae.BaseSAE):
             )
             return encoded_acts_BF
 
-        post_topk = post_relu_feat_acts_BF.topk(self.k, sorted=False, dim=-1)
+        post_topk = post_relu_feat_acts_BF.topk(self.k, sorted=False, dim=-1)  # type: ignore
 
         tops_acts_BK = post_topk.values
         top_indices_BK = post_topk.indices
