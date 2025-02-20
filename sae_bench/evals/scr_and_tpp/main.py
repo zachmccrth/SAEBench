@@ -763,6 +763,7 @@ def run_eval(
     force_rerun: bool = False,
     clean_up_activations: bool = False,
     save_activations: bool = True,
+    artifacts_path: str = "artifacts",
 ):
     """
     selected_saes is a list of either tuples of (sae_lens release, sae_lens id) or (sae_name, SAE object)
@@ -781,7 +782,6 @@ def run_eval(
     output_path = os.path.join(output_path, eval_type)
     os.makedirs(output_path, exist_ok=True)
 
-    artifacts_base_folder = "artifacts"
     artifacts_folder = None
 
     results_dict = {}
@@ -809,7 +809,7 @@ def run_eval(
             continue
 
         artifacts_folder = os.path.join(
-            artifacts_base_folder,
+            artifacts_path,
             eval_type,
             config.model_name,
             sae.cfg.hook_name,
@@ -964,6 +964,12 @@ def arg_parser():
         help="Output folder",
     )
     parser.add_argument(
+        "--artifacts_path",
+        type=str,
+        default="artifacts",
+        help="Path to save artifacts",
+    )
+    parser.add_argument(
         "--force_rerun", action="store_true", help="Force rerun of experiments"
     )
     parser.add_argument(
@@ -1060,6 +1066,7 @@ if __name__ == "__main__":
         args.force_rerun,
         args.clean_up_activations,
         args.save_activations,
+        artifacts_path=args.artifacts_path,
     )
 
     end_time = time.time()
