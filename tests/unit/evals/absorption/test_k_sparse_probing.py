@@ -13,10 +13,10 @@ from sae_bench.evals.absorption.vocab import LETTERS
 
 def test_train_sparse_multi_probe_results_in_many_zero_weights():
     torch.set_grad_enabled(True)
-    x = torch.rand(1000, 200)
+    x = torch.rand(1000, 500)
     y = torch.randint(2, (1000, 3))
-    probe1 = train_sparse_multi_probe(x, y, l1_decay=0.03, device=torch.device("cpu"))
-    probe2 = train_sparse_multi_probe(x, y, l1_decay=0.1, device=torch.device("cpu"))
+    probe1 = train_sparse_multi_probe(x, y, l1_decay=0.015, device=torch.device("cpu"))
+    probe2 = train_sparse_multi_probe(x, y, l1_decay=1.0, device=torch.device("cpu"))
 
     probe1_zero_weights = (probe1.weights.abs() < 1e-5).sum()
     probe2_zero_weights = (probe2.weights.abs() < 1e-5).sum()
