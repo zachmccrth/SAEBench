@@ -288,6 +288,7 @@ def run_eval(
     force_rerun: bool = False,
     clean_up_activations: bool = False,
     save_activations: bool = True,
+    artifacts_path: str = "artifacts",
 ):
     """
     selected_saes is a list of either tuples of (sae_lens release, sae_lens id) or (sae_name, SAE object)
@@ -299,7 +300,6 @@ def run_eval(
     sae_lens_version = get_sae_lens_version()
     sae_bench_commit_hash = get_sae_bench_version()
 
-    artifacts_base_folder = "artifacts"
     artifacts_folder = None
     os.makedirs(output_path, exist_ok=True)
 
@@ -328,7 +328,7 @@ def run_eval(
             continue
 
         artifacts_folder = os.path.join(
-            artifacts_base_folder,
+            artifacts_path,
             EVAL_TYPE_ID_SPARSE_PROBING,
             config.model_name,
             sae.cfg.hook_name,
@@ -492,6 +492,12 @@ def arg_parser():
         action="store_true",
         help="Lower GPU memory usage by doing more computation on the CPU. Useful on 1M width SAEs. Will be slower and require more system memory.",
     )
+    parser.add_argument(
+        "--artifacts_path",
+        type=str,
+        default="artifacts",
+        help="Path to save artifacts",
+    )
 
     return parser
 
@@ -526,6 +532,7 @@ if __name__ == "__main__":
         args.force_rerun,
         args.clean_up_activations,
         args.save_activations,
+        artifacts_path=args.artifacts_path,
     )
 
     end_time = time.time()

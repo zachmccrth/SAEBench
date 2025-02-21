@@ -575,6 +575,7 @@ def run_eval(
     output_path: str,
     force_rerun: bool = False,
     save_logs_path: str | None = None,
+    artifacts_path: str = "artifacts",
 ) -> dict[str, Any]:
     """
     selected_saes is a list of either tuples of (sae_lens release, sae_lens id) or (sae_name, SAE object)
@@ -583,7 +584,6 @@ def run_eval(
     sae_lens_version = get_sae_lens_version()
     sae_bench_commit_hash = get_sae_bench_version()
 
-    artifacts_base_folder = "artifacts"
     os.makedirs(output_path, exist_ok=True)
 
     results_dict = {}
@@ -610,7 +610,7 @@ def run_eval(
             print(f"Skipping {sae_release}_{sae_id} as results already exist")
             continue
 
-        artifacts_folder = os.path.join(artifacts_base_folder, EVAL_TYPE_ID_AUTOINTERP)
+        artifacts_folder = os.path.join(artifacts_path, EVAL_TYPE_ID_AUTOINTERP)
 
         sae_eval_result = run_eval_single_sae(
             config, sae, model, device, artifacts_folder, api_key, sparsity
@@ -736,6 +736,12 @@ def arg_parser():
         help="Output folder",
     )
     parser.add_argument(
+        "--artifacts_path",
+        type=str,
+        default="artifacts",
+        help="Path to save artifacts",
+    )
+    parser.add_argument(
         "--force_rerun", action="store_true", help="Force rerun of experiments"
     )
     parser.add_argument(
@@ -794,6 +800,7 @@ if __name__ == "__main__":
         api_key,
         args.output_folder,
         args.force_rerun,
+        artifacts_path=args.artifacts_path,
     )
 
     end_time = time.time()
