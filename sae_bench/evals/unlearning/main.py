@@ -114,6 +114,7 @@ def run_eval(
     output_path: str,
     force_rerun: bool = False,
     clean_up_artifacts: bool = False,
+    artifacts_path: str = "artifacts",
 ):
     """
     selected_saes is a list of either tuples of (sae_lens release, sae_lens id) or (sae_name, SAE object)
@@ -136,7 +137,7 @@ def run_eval(
 
     os.makedirs(output_path, exist_ok=True)
 
-    artifacts_folder = os.path.join("artifacts", EVAL_TYPE, config.model_name)
+    artifacts_folder = os.path.join(artifacts_path, EVAL_TYPE, config.model_name)
 
     results_dict = {}
 
@@ -288,6 +289,12 @@ def arg_parser():
         choices=[None, "float32", "float64", "float16", "bfloat16"],
         help="Data type for LLM. If None, will be populated using LLM_NAME_TO_DTYPE",
     )
+    parser.add_argument(
+        "--artifacts_path",
+        type=str,
+        default="artifacts",
+        help="Path to save artifacts",
+    )
 
     return parser
 
@@ -327,6 +334,7 @@ if __name__ == "__main__":
         args.output_folder,
         args.force_rerun,
         args.clean_up_artifacts,
+        args.artifacts_path,
     )
 
     end_time = time.time()
