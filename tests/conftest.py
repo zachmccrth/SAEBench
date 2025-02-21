@@ -1,4 +1,5 @@
 import pytest
+import torch
 from sae_lens import SAE
 from transformer_lens import HookedTransformer
 from transformers import GPT2LMHeadModel
@@ -19,6 +20,15 @@ def gpt2_l4_sae() -> SAE:
     return SAE.from_pretrained(
         "gpt2-small-res-jb", "blocks.4.hook_resid_pre", device="cpu"
     )[0]
+
+
+@pytest.fixture
+def gpt2_l4_sae_sparsity() -> torch.Tensor:
+    sparsity = SAE.from_pretrained(
+        "gpt2-small-res-jb", "blocks.4.hook_resid_pre", device="cpu"
+    )[2]
+    assert sparsity is not None
+    return sparsity
 
 
 @pytest.fixture
