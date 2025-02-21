@@ -127,7 +127,10 @@ def load_dictionary_learning_topk_sae(
     }
 
     if "threshold" in pt_params:
-        key_mapping["threshold"] = "threshold"
+        if use_threshold_at_inference:
+            key_mapping["threshold"] = "threshold"
+        else:
+            del pt_params["threshold"]
 
     # Create a new dictionary with renamed keys
     renamed_params = {key_mapping.get(k, k): v for k, v in pt_params.items()}
