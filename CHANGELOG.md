@@ -2,6 +2,117 @@
 
 
 
+## v0.4.0 (2025-02-22)
+
+### Chore
+
+* chore: making test less flaky ([`3effa18`](https://github.com/adamkarvonen/SAEBench/commit/3effa183b472f6c589850b7382c8d30c6ef39850))
+
+* chore: fix updated torch types ([`4c46da6`](https://github.com/adamkarvonen/SAEBench/commit/4c46da6610b3bba7df2910cd0397a9926c4a9264))
+
+* chore: fixing linting errors and adding precommit hook ([`85f6241`](https://github.com/adamkarvonen/SAEBench/commit/85f624182319c36f9b3d9bd520e95e61a1264bd1))
+
+### Feature
+
+* feat: allow setting the artifacts path ([`2a4b4dc`](https://github.com/adamkarvonen/SAEBench/commit/2a4b4dc1bc9bbe401b46c36097bd647743c4af80))
+
+### Fix
+
+* fix: gracefully handle slashes in model filename for autointerp ([`5d6464a`](https://github.com/adamkarvonen/SAEBench/commit/5d6464a8ee838ab036d5051ab0304a92ba890baa))
+
+* fix: fix typing and updating mdl for saelens &gt;=5.4.0 ([`802d1c3`](https://github.com/adamkarvonen/SAEBench/commit/802d1c34019b505227a460ae71febc5424ce36c1))
+
+* fix: load probe class with weights_only = False ([`f05bf40`](https://github.com/adamkarvonen/SAEBench/commit/f05bf408ebbec97f2895af89facb7c1fbf90a72d))
+
+* fix: Update README to include eval output schema update instructions ([`f0adee2`](https://github.com/adamkarvonen/SAEBench/commit/f0adee26f83731cc11598d82c1be7abdc2b0fcfd))
+
+* fix: Update json schema jsons ([`2b2a6d3`](https://github.com/adamkarvonen/SAEBench/commit/2b2a6d36b6a1a1f561cc86ecdd0f425568bd2378))
+
+### Unknown
+
+* Merge pull request #60 from chanind/deflaking-test
+
+chore: making test less flaky ([`963f2e8`](https://github.com/adamkarvonen/SAEBench/commit/963f2e8e36dfc2b0574995a875e936801d4028b2))
+
+* Remove threshold from state dict if we aren&#39;t using it ([`d91a218`](https://github.com/adamkarvonen/SAEBench/commit/d91a218b4cc4ac6c164d0e1b739c8437901c7acd))
+
+* Merge pull request #59 from chanind/artifacts-path-option
+
+feat: allow setting the artifacts path ([`53901a2`](https://github.com/adamkarvonen/SAEBench/commit/53901a215035840a642fd2b29dc619140757e27f))
+
+* Merge pull request #58 from chanind/fixing-types
+
+chore: fix updated torch types ([`849018f`](https://github.com/adamkarvonen/SAEBench/commit/849018fb584946762b201cbbf155b87132880325))
+
+* Merge pull request #57 from chanind/fix-slash-in-model-name-autointerp
+
+fix: gracefully handle slashes in model filename for autointerp ([`11b2e38`](https://github.com/adamkarvonen/SAEBench/commit/11b2e3851c9212996a2d9994f0315e33d4cc53d5))
+
+* adding artifacts_path to unlearning eval ([`ce1de32`](https://github.com/adamkarvonen/SAEBench/commit/ce1de32470187be0228e8fc83a5098c61048b0be))
+
+* By default we don&#39;t use a threshold for custom topk SAEs ([`60579ed`](https://github.com/adamkarvonen/SAEBench/commit/60579ed19a6281956621283bada7be2e76a7b583))
+
+* Merge pull request #56 from chanind/type-fixes
+
+fix: fix typing and updating mdl for saelens &gt;=5.4.0 ([`0888d07`](https://github.com/adamkarvonen/SAEBench/commit/0888d07876caff50d6e292d11950cee349fb0904))
+
+* Merge pull request #55 from chanind/precommit-check
+
+chore: fixing linting errors and adding precommit hook ([`7ac7ced`](https://github.com/adamkarvonen/SAEBench/commit/7ac7ced7bca2d47247f0c7fa5e4ad7f6437dec60))
+
+* Fix SAE Bench SAEs repo names ([`18dc457`](https://github.com/adamkarvonen/SAEBench/commit/18dc4571ba027f09c8d487658a0b615977c1a127))
+
+* Prevent potential division by zero ([`92315dd`](https://github.com/adamkarvonen/SAEBench/commit/92315dd4755c472bb6dfd8548a69f769d8644c6c))
+
+* Add optional pinned dependencies ([`e74f0cf`](https://github.com/adamkarvonen/SAEBench/commit/e74f0cfac9943ae992d62fc3974cb457cb273df2))
+
+* Calculate featurewise statistics in demo ([`5204b48`](https://github.com/adamkarvonen/SAEBench/commit/5204b4822c66a838d9c9221640308e7c23eda00a))
+
+* Improve documentation on custom SAE usage ([`f15fe53`](https://github.com/adamkarvonen/SAEBench/commit/f15fe53281238c31c72f6646a53b9650e7b0a5f4))
+
+* Merge pull request #53 from adamkarvonen/hide_absorption_stddev
+
+hide stddev from default display for absorption ([`155afbc`](https://github.com/adamkarvonen/SAEBench/commit/155afbca50a9ffe6cf72c81796997e6daa475658))
+
+* hide stddev from default display for absorption ([`d970f05`](https://github.com/adamkarvonen/SAEBench/commit/d970f054ca9918ea6ecd6a228106377d512eb55c))
+
+* Merge pull request #52 from adamkarvonen/update_scr_tpp
+
+update scr_tpp_schema to show top 20 by default ([`f551e7b`](https://github.com/adamkarvonen/SAEBench/commit/f551e7bf6d8c615b50e524c3e07091a8e3c73fa0))
+
+* update scr_tpp_schema to show top 20 by default ([`59320e2`](https://github.com/adamkarvonen/SAEBench/commit/59320e2d6bc44b067b3a8476b32535ce7238f68e))
+
+* Merge pull request #51 from adamkarvonen/update_schema_jsons
+
+fix: Update eval output schema jsons ([`7b2021c`](https://github.com/adamkarvonen/SAEBench/commit/7b2021cbf57d8b491920f168caf907ed05a43c49))
+
+* Add computational requirements ([`9b621a9`](https://github.com/adamkarvonen/SAEBench/commit/9b621a93a865c3b16262dc129689b5f824840308))
+
+* Improve graphing notebook, include matryoshka results in graphs ([`f2d1d98`](https://github.com/adamkarvonen/SAEBench/commit/f2d1d982515d2dee706eb23a1ca459b308988764))
+
+* Merge pull request #50 from chanind/lint-and-type-check
+
+chore: Adding formatting, linting and type checking ([`a0fb5e9`](https://github.com/adamkarvonen/SAEBench/commit/a0fb5e90a82a0414ca9be0511ec3df44af433f2f))
+
+* adding README and Makefile with helpers ([`7452eca`](https://github.com/adamkarvonen/SAEBench/commit/7452eca1a13563bb5a625409aad6b46b319a4076))
+
+* fixing linting and type-checking issues ([`e663e3a`](https://github.com/adamkarvonen/SAEBench/commit/e663e3a097fc1c49b51096b2455c5639aaa099f8))
+
+* formatting with ruff ([`14dad45`](https://github.com/adamkarvonen/SAEBench/commit/14dad450954fad4dd55e8480204d227723bf4efe))
+
+* Check that unlearning data exists before running unlearning eval ([`294b25c`](https://github.com/adamkarvonen/SAEBench/commit/294b25ca1f531f2fd97333292dd30315a009e225))
+
+* Improve export notebook ([`e2b0b3c`](https://github.com/adamkarvonen/SAEBench/commit/e2b0b3c57a3d256998f8bda15cdb21542f226d1a))
+
+* Improve graphing utils ([`661920d`](https://github.com/adamkarvonen/SAEBench/commit/661920d17c52ca1c479c21bbf5c68b40c9d50222))
+
+* Fix spelling ([`8c0df93`](https://github.com/adamkarvonen/SAEBench/commit/8c0df931c606bbfd83d0688442fed2a6d23c37f6))
+
+* Add standard deviation for absorption / autointerp, store results per class for sparse probing / tpp for potential error bars ([`141aff7`](https://github.com/adamkarvonen/SAEBench/commit/141aff72928f7588c1451bed47c401e1d565d471))
+
+* Use GPU probing in correct location ([`ec5efa8`](https://github.com/adamkarvonen/SAEBench/commit/ec5efa820ceb6e88d53667f247bb2a09efca609f))
+
+
 ## v0.3.2 (2025-01-14)
 
 ### Fix
