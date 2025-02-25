@@ -15,7 +15,6 @@ from huggingface_hub import snapshot_download
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 import torch
-from nnsight import LanguageModel
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
@@ -207,7 +206,7 @@ class RAVELInstance:
 
     def generate_completions(
         self,
-        model: LanguageModel,
+        model: AutoModelForCausalLM,
         tokenizer: AutoTokenizer,
         max_new_tokens: int,
         llm_batch_size: int = 32,

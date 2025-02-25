@@ -1,7 +1,6 @@
 import torch
 import numpy as np
-from transformers import BatchEncoding
-from nnsight import LanguageModel
+from transformers import BatchEncoding, AutoModelForCausalLM
 from sae_lens import SAE
 import random
 from tqdm import tqdm
@@ -21,13 +20,16 @@ def recursively_match_prompts(base_prompt, source_prompts):
         return source_prompt
     else:
         return recursively_match_prompts(base_prompt, source_prompts)
-    
+
+
 def sample_prompts_by_attribute(dataset, attribute, n_samples):
     all_prompts = dataset.get_prompts_by_attribute(attribute)
     if len(all_prompts) < n_samples:
-        print(f"Warning: Not enough prompts for attribute {attribute} for intervention. Returning {len(all_prompts)} instead of {n_samples} prompts.")
+        print(
+            f"Warning: Not enough prompts for attribute {attribute} for intervention. Returning {len(all_prompts)} instead of {n_samples} prompts."
+        )
         return all_prompts, all_prompts
-    
+
     selected_prompts = rng.sample(all_prompts, n_samples)
     return all_prompts, selected_prompts
 
@@ -39,10 +41,14 @@ def get_prompt_pairs(dataset, base_attribute, source_attribute, n_interventions)
     The cause evaluation requires source_prompts from attribute A templates, attribute values in base and source should differ.
     The isolation evaluation requires source_prompts from attribute B templates.
     """
-    all_base_prompts, base_prompts = sample_prompts_by_attribute(dataset, base_attribute, n_interventions)
+    all_base_prompts, base_prompts = sample_prompts_by_attribute(
+        dataset, base_attribute, n_interventions
+    )
 
     if base_attribute != source_attribute:
-        _, source_prompts = sample_prompts_by_attribute(dataset, source_attribute, n_interventions)
+        _, source_prompts = sample_prompts_by_attribute(
+            dataset, source_attribute, n_interventions
+        )
     else:
         all_source_prompts = all_base_prompts
         source_prompts = []
@@ -85,7 +91,9 @@ def get_prompt_pairs(dataset, base_attribute, source_attribute, n_interventions)
 def format_prompt_batch(prompts: List[Prompt], device) -> (BatchEncoding, torch.Tensor):
     ids = torch.stack([p.input_ids for p in prompts]).to(device)
     attn = torch.stack([p.attention_mask for p in prompts]).to(device)
-    final_entity_pos = torch.tensor([p.final_entity_token_pos for p in prompts]).to(device)
+    final_entity_pos = torch.tensor([p.final_entity_token_pos for p in prompts]).to(
+        device
+    )
     encoding = BatchEncoding(
         {
             "input_ids": ids,
@@ -105,7 +113,7 @@ def create_inverted_latent_mask(
 
 
 def generate_with_intervention(
-    model: LanguageModel,
+    model: AutoModelForCausalLM,
     layer: int,
     sae: SAE,
     base_prompts: List[Prompt],
@@ -116,7 +124,9 @@ def generate_with_intervention(
     tracer_kwargs={"scan": False, "validate": False},
 ):
     sae_idxs = torch.tensor(sae_latent_idxs, dtype=torch.int, device=sae.device)
-    inverted_latent_mask = create_inverted_latent_mask(sae_idxs, sae_dict_size=sae.cfg.d_sae)
+    inverted_latent_mask = create_inverted_latent_mask(
+        sae_idxs, sae_dict_size=sae.cfg.d_sae
+    )
 
     ## Iterate over batches
     generated_output_tokens = []
@@ -124,8 +134,12 @@ def generate_with_intervention(
         base_batch = base_prompts[batch_idx : batch_idx + inv_batch_size]
         source_batch = source_prompts[batch_idx : batch_idx + inv_batch_size]
 
-        base_encoding, base_entity_pos = format_prompt_batch(base_batch, device=model.device)
-        source_encoding, source_entity_pos = format_prompt_batch(source_batch, device=model.device)
+        base_encoding, base_entity_pos = format_prompt_batch(
+            base_batch, device=model.device
+        )
+        source_encoding, source_entity_pos = format_prompt_batch(
+            source_batch, device=model.device
+        )
 
         # Get source activations
         with model.trace(source_encoding, **tracer_kwargs):
@@ -138,7 +152,9 @@ def generate_with_intervention(
         source_decoded_act_BD = sae.decode(source_sae_act_BS)
 
         # Generate from base prompts with interventions
-        with model.generate(base_encoding, max_new_tokens=n_generated_tokens, **tracer_kwargs):
+        with model.generate(
+            base_encoding, max_new_tokens=n_generated_tokens, **tracer_kwargs
+        ):
             # Cache original activations at the final token position of the attribute
             residual_stream_module = model.model.layers[layer]
             base_act_BLD = residual_stream_module.output[0]
@@ -190,7 +206,6 @@ def compute_disentanglement(
     attribute_feature_dict: Dict[str, Dict[float, List[int]]],
     tracer_kwargs={"scan": False, "validate": False},
 ):
-
     # Cause evaluation: High accuracy if intervening with A_features is successful on base_A_template, ie. source_A_attribute_value is generated.
     cause_accuracies = {}
     for attribute in tqdm(attributes, desc="Cause evaluation across attributes"):
@@ -219,17 +234,20 @@ def compute_disentanglement(
 
     # Isolation evaluation: High accuracy if intervening with B_features is unsuccessful on base_A_template, ie. base_A_attribute is generated regardless of intervention.
     isolation_accuracies = {}
-    for base_attribute in tqdm(attributes, desc="Isolation evaluation across attributes"):
+    for base_attribute in tqdm(
+        attributes, desc="Isolation evaluation across attributes"
+    ):
         for source_attribute in attributes:
             if base_attribute == source_attribute:
                 continue
-            
+
             base_prompts, source_prompts = get_prompt_pairs(
                 dataset, base_attribute, source_attribute, config.n_interventions
             )
             isolation_accuracies[(base_attribute, source_attribute)] = {}
             for threshold in tqdm(
-                config.probe_coefficients, desc="Isolation evaluation across feature thresholds"
+                config.probe_coefficients,
+                desc="Isolation evaluation across feature thresholds",
             ):
                 sae_latent_idxs = attribute_feature_dict[source_attribute][threshold]
                 generated_output_strings = generate_with_intervention(
@@ -255,7 +273,11 @@ def compute_disentanglement(
         cause_scores[t] = [cause_accuracies[a][t] for a in attributes]
         isolation_scores[t] = []
         for base in attributes:
-            i = [isolation_accuracies[(base, source)][t] for source in attributes if base != source]
+            i = [
+                isolation_accuracies[(base, source)][t]
+                for source in attributes
+                if base != source
+            ]
             isolation_scores[t].append(i)
 
         cause_mean = np.mean(cause_scores[t])

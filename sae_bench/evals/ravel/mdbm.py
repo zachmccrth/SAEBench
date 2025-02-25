@@ -8,7 +8,10 @@ from sae_bench.evals.ravel.eval_config import RAVELEvalConfig
 
 
 def get_layer_activations(
-    model: AutoModelForCausalLM, target_layer: int, inputs: BatchEncoding
+    model: AutoModelForCausalLM,
+    target_layer: int,
+    inputs: BatchEncoding,
+    source_pos_B: torch.Tensor,
 ) -> torch.Tensor:
     acts_BLD = None
 
@@ -28,17 +31,22 @@ def get_layer_activations(
 
     handle.remove()
 
-    return acts_BLD
+    assert acts_BLD is not None
+
+    acts_BD = acts_BLD[list(range(acts_BLD.shape[0])), source_pos_B, :]
+
+    return acts_BD
 
 
 def apply_binary_mask(
     model: AutoModelForCausalLM,
     target_layer: int,
     inputs: BatchEncoding,
-    source_rep_BLD: torch.Tensor,
+    source_rep_BD: torch.Tensor,
     binary_mask_F: torch.Tensor,
     sae: sae_lens.SAE,
     temperature: float,
+    base_pos_B: torch.Tensor,
 ) -> torch.Tensor:
     acts_BLD = None
 
@@ -49,16 +57,19 @@ def apply_binary_mask(
         else:
             raise ValueError("Unexpected output shape")
 
-        source_act_BLF = sae.encode(source_rep_BLD)
-        base_act_BLF = sae.encode(resid_BLD)
+        source_act_BF = sae.encode(source_rep_BD)
+        resid_BD = resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :]
+        base_act_BF = sae.encode(resid_BD)
         mask_values_F = torch.sigmoid(binary_mask_F / temperature)
 
-        modified_act_BLF = (
+        modified_act_BF = (
             1 - mask_values_F
-        ) * base_act_BLF + mask_values_F * source_act_BLF
-        modified_resid_BLD = sae.decode(modified_act_BLF)
+        ) * base_act_BF + mask_values_F * source_act_BF
+        modified_resid_BD = sae.decode(modified_act_BF)
 
-        return (modified_resid_BLD, *rest)
+        resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :] = modified_resid_BD
+
+        return (resid_BLD, *rest)
 
     handle = model.model.layers[target_layer].register_forward_hook(intervention_hook)
 
@@ -85,22 +96,20 @@ class MDBM(nn.Module):
         self.model = model
         self.tokenizer = tokenizer
         self.sae = sae
-        self.layer_intervened = torch.tensor(
-            sae.cfg.hook_layer, dtype=torch.int32, device=model.device
-        )
+        self.layer_intervened = sae.cfg.hook_layer
         self.binary_mask = torch.nn.Parameter(
             torch.zeros(sae.cfg.d_sae, device=model.device, dtype=model.dtype),
             requires_grad=True,
         )
         self.batch_size = config.llm_batch_size
         self.device = model.device
-        self.temperature = 1e-2
+        self.temperature: float = 1e-2
 
     def forward(self, base_encoding_BL, source_encoding_BL, base_pos_B, source_pos_B):
         with torch.no_grad():
             # Get source representation
             source_rep = get_layer_activations(
-                self.model, self.layer_intervened, source_encoding_BL
+                self.model, self.layer_intervened, source_encoding_BL, source_pos_B
             )
 
         logits = apply_binary_mask(
@@ -111,6 +120,7 @@ class MDBM(nn.Module):
             self.binary_mask,
             self.sae,
             self.temperature,
+            base_pos_B,
         )
 
         predicted = logits.argmax(dim=-1)
@@ -139,6 +149,32 @@ class MDBM(nn.Module):
         # return cause_loss + iso_loss
 
 
+def get_validation_loss(mdbm: MDBM, val_loader: torch.utils.data.DataLoader):
+    """Compute validation loss across the validation dataset"""
+    mdbm.eval()
+    val_loss = 0
+    val_batch_count = 0
+
+    with torch.no_grad():
+        for batch in val_loader:
+            (
+                base_encodings_BL,
+                source_encodings_BL,
+                base_pos_B,
+                source_pos_B,
+                base_pred_B,
+                source_pred_B,
+            ) = batch
+            intervened_logits_BLV, _ = mdbm(
+                base_encodings_BL, source_encodings_BL, base_pos_B, source_pos_B
+            )
+            val_loss += mdbm.compute_loss(intervened_logits_BLV, base_pred_B).item()
+            val_batch_count += 1
+
+    avg_val_loss = val_loss / val_batch_count if val_batch_count > 0 else 0
+    return avg_val_loss
+
+
 def train_mdbm(
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
@@ -148,18 +184,36 @@ def train_mdbm(
     val_loader,
     verbose: bool = False,
 ):
+    initial_temperature = 1e-2
+    final_temperature = 1e-7
+    temperature_schedule = torch.logspace(
+        torch.log10(torch.tensor(initial_temperature)),
+        torch.log10(torch.tensor(final_temperature)),
+        config.num_epochs,
+        device=model.device,
+        dtype=model.dtype,
+    )
+
     mdbm = MDBM(
         model,
         tokenizer,
         config,
         sae,
     ).to(model.device)
-    optimizer = torch.optim.Adam(mdbm.parameters(), lr=config.learning_rate)
+    optimizer = torch.optim.Adam(
+        [p for p in mdbm.parameters() if p is mdbm.binary_mask], lr=config.learning_rate
+    )
 
-    best_val_loss = float("inf")
+    # Get initial validation loss
+    initial_val_loss = get_validation_loss(mdbm, val_loader)
+    if verbose:
+        print(f"Initial validation loss: {initial_val_loss:.4f}")
+
+    best_val_loss = initial_val_loss
     patience_counter = 0
 
     for epoch in range(config.num_epochs):
+        mdbm.temperature = temperature_schedule[epoch].item()
         mdbm.train()
         train_loss = 0
         batch_count = 0
@@ -177,7 +231,7 @@ def train_mdbm(
             optimizer.zero_grad()
 
             intervened_logits_BLV, _ = mdbm(
-                source_encodings_BL, base_encodings_BL, base_pos_B, source_pos_B
+                base_encodings_BL, source_encodings_BL, base_pos_B, source_pos_B
             )
             loss = mdbm.compute_loss(
                 intervened_logits_BLV, base_pred_B
@@ -192,27 +246,7 @@ def train_mdbm(
         avg_train_loss = train_loss / batch_count if batch_count > 0 else 0
 
         # Validation
-        mdbm.eval()
-        val_loss = 0
-        val_batch_count = 0
-
-        with torch.no_grad():
-            for batch in val_loader:
-                (
-                    base_encodings_BL,
-                    source_encodings_BL,
-                    base_pos_B,
-                    source_pos_B,
-                    base_pred_B,
-                    source_pred_B,
-                ) = batch
-                intervened_logits_BLV, _ = mdbm(
-                    source_encodings_BL, base_encodings_BL, base_pos_B, source_pos_B
-                )
-                val_loss += mdbm.compute_loss(intervened_logits_BLV, base_pred_B).item()
-                val_batch_count += 1
-
-        avg_val_loss = val_loss / val_batch_count if val_batch_count > 0 else 0
+        avg_val_loss = get_validation_loss(mdbm, val_loader)
 
         # Print losses if verbose
         if verbose:
@@ -233,9 +267,9 @@ def train_mdbm(
             if verbose:
                 print(f"  No improvement for {patience_counter} epochs")
 
-        if patience_counter >= config.early_stop_patience:
-            print(f"Early stopping at epoch {epoch + 1}")
-            break
+        # if patience_counter >= config.early_stop_patience:
+        #     print(f"Early stopping at epoch {epoch + 1}")
+        #     break
 
     if verbose:
         print(f"Training complete. Best validation loss: {best_val_loss:.4f}")

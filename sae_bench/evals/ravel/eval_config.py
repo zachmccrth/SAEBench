@@ -3,7 +3,6 @@ from pydantic import Field
 from sae_bench.evals.base_eval_output import BaseEvalConfig
 from typing import List
 
-CAN_MODE = True
 DEBUG_MODE = True
 
 
@@ -39,9 +38,14 @@ class RAVELEvalConfig(BaseEvalConfig):
         description="Downsample the full dataset to this size.",
     )
     num_pairs_per_attribute: int = Field(
-        default=100,
+        default=200,
         title="Number of Pairs per Attribute",
         description="Number of pairs per attribute",
+    )
+    train_test_split: float = Field(
+        default=0.5,
+        title="Train Test Split",
+        description="Fraction of dataset to use for training.",
     )
     force_dataset_recompute: bool = Field(
         default=False,
@@ -124,8 +128,8 @@ class RAVELEvalConfig(BaseEvalConfig):
 
     if DEBUG_MODE:
         n_samples_per_attribute_class = 100
-        top_n_entities = 10
-        top_n_templates = 2
+        top_n_entities = 100
+        top_n_templates = 10
 
         n_interventions = 10
         llm_batch_size = 5

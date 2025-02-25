@@ -8,6 +8,149 @@ from sae_bench.evals.ravel.instance import create_filtered_dataset
 from sae_bench.evals.ravel.intervention import get_prompt_pairs
 
 
+def create_dataloaders(
+    cause_base_prompts, cause_source_prompts, model, eval_config, train_test_split=0.5
+):
+    """
+    Create train and validation dataloaders from prompt pairs.
+
+    Args:
+        cause_base_prompts: List of base prompts
+        cause_source_prompts: List of source prompts
+        model: The model (used for device information)
+        eval_config: Configuration for evaluation
+        train_test_split: Ratio of data to use for training (default: 0.5)
+
+    Returns:
+        train_loader: Dataloader for training
+        val_loader: Dataloader for validation
+    """
+    formatted_cause_pairs = []
+    for base, source in zip(cause_base_prompts, cause_source_prompts):
+        base_tokens_L = base.input_ids
+        base_attn_mask_L = base.attention_mask
+        base_pos = base.final_entity_token_pos
+        base_pred = base.first_generated_token_id
+        source_tokens_L = source.input_ids
+        source_attn_mask_L = source.attention_mask
+        source_pos = source.final_entity_token_pos
+        source_pred = source.first_generated_token_id
+        formatted_cause_pairs.append(
+            (
+                base_tokens_L,
+                source_tokens_L,
+                base_attn_mask_L,
+                source_attn_mask_L,
+                base_pos,
+                source_pos,
+                base_pred,
+                source_pred,
+            )
+        )
+
+    # Split into train and validation sets
+    total_pairs = len(formatted_cause_pairs)
+    train_size = int(total_pairs * train_test_split)
+
+    train_pairs = formatted_cause_pairs[:train_size]
+    val_pairs = formatted_cause_pairs[train_size:]
+
+    print(
+        f"Created {len(train_pairs)} training pairs and {len(val_pairs)} validation pairs"
+    )
+
+    # Create dataloaders
+    train_loader = create_dataloader_from_pairs(train_pairs, model, eval_config)
+    val_loader = create_dataloader_from_pairs(val_pairs, model, eval_config)
+
+    return train_loader, val_loader
+
+
+def create_dataloader_from_pairs(formatted_pairs, model, eval_config):
+    """
+    Create a dataloader from formatted prompt pairs.
+
+    Args:
+        formatted_pairs: List of formatted prompt pairs
+        model: The model (used for device information)
+        eval_config: Configuration for evaluation
+
+    Returns:
+        dataloader: List of batched data
+    """
+    dataloader = []
+    num_batches = len(formatted_pairs) // eval_config.llm_batch_size
+
+    for batch_idx in range(num_batches):
+        batch_start = batch_idx * eval_config.llm_batch_size
+        batch_end = batch_start + eval_config.llm_batch_size
+        batch_data = formatted_pairs[batch_start:batch_end]
+
+        base_tokens_BL = []
+        source_tokens_BL = []
+        base_attn_mask_BL = []
+        source_attn_mask_BL = []
+        base_pos_B = []
+        source_pos_B = []
+        base_pred_B = []
+        source_pred_B = []
+
+        for (
+            base_tokens_L,
+            source_tokens_L,
+            base_attn_mask_L,
+            source_attn_mask_L,
+            base_pos,
+            source_pos,
+            base_pred,
+            source_pred,
+        ) in batch_data:
+            base_tokens_BL.append(base_tokens_L)
+            source_tokens_BL.append(source_tokens_L)
+            base_attn_mask_BL.append(base_attn_mask_L)
+            source_attn_mask_BL.append(source_attn_mask_L)
+            base_pos_B.append(base_pos)
+            source_pos_B.append(source_pos)
+            base_pred_B.append(base_pred)
+            source_pred_B.append(source_pred)
+
+        base_tokens_BL = torch.stack(base_tokens_BL).to(model.device)
+        source_tokens_BL = torch.stack(source_tokens_BL).to(model.device)
+        base_attn_mask_BL = torch.stack(base_attn_mask_BL).to(model.device)
+        source_attn_mask_BL = torch.stack(source_attn_mask_BL).to(model.device)
+        base_pos_B = torch.tensor(base_pos_B).to(model.device)
+        source_pos_B = torch.tensor(source_pos_B).to(model.device)
+        base_pred_B = torch.tensor(base_pred_B).to(model.device)
+        source_pred_B = torch.tensor(source_pred_B).to(model.device)
+
+        base_encoding_BL = BatchEncoding(
+            {
+                "input_ids": base_tokens_BL,
+                "attention_mask": base_attn_mask_BL,
+            }
+        )
+        source_encoding_BL = BatchEncoding(
+            {
+                "input_ids": source_tokens_BL,
+                "attention_mask": source_attn_mask_BL,
+            }
+        )
+
+        dataloader.append(
+            (
+                base_encoding_BL,
+                source_encoding_BL,
+                base_pos_B,
+                source_pos_B,
+                base_pred_B,
+                source_pred_B,
+            )
+        )
+
+    print(f"Created dataloader with {len(dataloader)} batches")
+    return dataloader
+
+
 def inspect_dataloader(
     dataloader, tokenizer, n=2, view_strs: bool = False, max_len: int = 300
 ):
@@ -171,9 +314,6 @@ def main():
     print(f"Using attributes: {chosen_attributes}")
     print(f"Dataset size: {len(dataset)}")
 
-    ## Put in to dataloader format
-    dataloader = []
-
     # get cause_pairs (target_attr_prompt)
     cause_base_prompts, cause_source_prompts = get_prompt_pairs(
         dataset=dataset,
@@ -182,113 +322,15 @@ def main():
         n_interventions=eval_config.num_pairs_per_attribute,  # //2
     )
 
-    # TODO:get isolation pairs (iso_prompt)
-    # shuffle
+    train_loader, val_loader = create_dataloaders(
+        cause_base_prompts,
+        cause_source_prompts,
+        model,
+        eval_config,
+        train_test_split=0.5,
+    )
 
-    formatted_cause_pairs = []
-    for base, source in zip(cause_base_prompts, cause_source_prompts):
-        base_tokens_L = base.input_ids
-        base_attn_mask_L = base.attention_mask
-        base_pos = base.final_entity_token_pos
-        base_pred = base.first_generated_token_id
-        source_tokens_L = source.input_ids
-        source_attn_mask_L = source.attention_mask
-        source_pos = source.final_entity_token_pos
-        source_pred = source.first_generated_token_id
-        formatted_cause_pairs.append(
-            (
-                base_tokens_L,
-                source_tokens_L,
-                base_attn_mask_L,
-                source_attn_mask_L,
-                base_pos,
-                source_pos,
-                base_pred,
-                source_pred,
-            )
-        )
-
-    first_pair = formatted_cause_pairs[0]
-    # print(f'first pair: {first_pair}')
-    num_das_batches = len(formatted_cause_pairs) // eval_config.llm_batch_size
-    for batch_idx in range(num_das_batches):
-        batch_start = batch_idx * eval_config.llm_batch_size
-        batch_end = batch_start + eval_config.llm_batch_size
-        batch_data = formatted_cause_pairs[batch_start:batch_end]
-
-        base_tokens_BL = []
-        source_tokens_BL = []
-        base_attn_mask_BL = []
-        source_attn_mask_BL = []
-        base_pos_B = []
-        source_pos_B = []
-        base_pred_B = []
-        source_pred_B = []
-        for (
-            base_tokens_L,
-            source_tokens_L,
-            base_attn_mask_L,
-            source_attn_mask_L,
-            base_pos,
-            source_pos,
-            base_pred,
-            source_pred,
-        ) in batch_data:
-            base_tokens_BL.append(base_tokens_L)
-            source_tokens_BL.append(source_tokens_L)
-            base_attn_mask_BL.append(base_attn_mask_L)
-            source_attn_mask_BL.append(source_attn_mask_L)
-            base_pos_B.append(base_pos)
-            source_pos_B.append(source_pos)
-            base_pred_B.append(base_pred)
-            source_pred_B.append(source_pred)
-
-        base_tokens_BL = torch.stack(base_tokens_BL).to(model.device)
-        source_tokens_BL = torch.stack(source_tokens_BL).to(model.device)
-        base_attn_mask_BL = torch.stack(base_attn_mask_BL).to(model.device)
-        source_attn_mask_BL = torch.stack(source_attn_mask_BL).to(model.device)
-        base_pos_B = torch.tensor(base_pos_B).to(model.device)
-        source_pos_B = torch.tensor(source_pos_B).to(model.device)
-        base_pred_B = torch.tensor(base_pred_B).to(model.device)
-        source_pred_B = torch.tensor(source_pred_B).to(model.device)
-
-        base_encoding_BL = BatchEncoding(
-            {
-                "input_ids": base_tokens_BL,
-                "attention_mask": base_attn_mask_BL,
-            }
-        )
-        source_encoding_BL = BatchEncoding(
-            {
-                "input_ids": source_tokens_BL,
-                "attention_mask": source_attn_mask_BL,
-            }
-        )
-
-        print(f"batch_encoding_input_id_shape: {base_encoding_BL['input_ids'].shape}")
-        print(
-            f"batch_encoding_attention_mask_shape: {base_encoding_BL['attention_mask'].shape}"
-        )
-        print(
-            f"source_encoding_input_id_shape: {source_encoding_BL['input_ids'].shape}"
-        )
-        print(
-            f"source_encoding_attention_mask_shape: {source_encoding_BL['attention_mask'].shape}"
-        )
-        dataloader.append(
-            (
-                base_encoding_BL,
-                source_encoding_BL,
-                base_pos_B,
-                source_pos_B,
-                base_pred_B,
-                source_pred_B,
-            )
-        )
-
-    print(f"loaded {len(dataloader)} batches")
-
-    # inspect_dataloader(dataloader, tokenizer, n=1, view_strs=True)
+    # inspect_dataloader(train_loader, tokenizer, n=1, view_strs=True)
 
     # Train MDBM
     mdbm.train_mdbm(
@@ -296,8 +338,9 @@ def main():
         tokenizer,
         eval_config,
         sae,
-        train_loader=dataloader,
-        val_loader=dataloader,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        verbose=True,
     )
 
 

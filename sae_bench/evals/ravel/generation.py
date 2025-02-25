@@ -3,7 +3,6 @@ from jaxtyping import Int
 
 import torch
 from transformers import AutoTokenizer, BatchEncoding, AutoModelForCausalLM
-from nnsight import LanguageModel
 
 
 def generate_batched(
@@ -47,8 +46,7 @@ def generate_batched(
 
 if __name__ == "__main__":
     # Test the generation
-    from nnsight import LanguageModel
-    from transformers import AutoTokenizer
+    from transformers import AutoTokenizer, AutoModelForCausalLM
 
     device = torch.device("cuda:0")
     model = LanguageModel(
