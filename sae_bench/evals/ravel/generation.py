@@ -2,12 +2,12 @@ from tqdm import tqdm
 from jaxtyping import Int
 
 import torch
-from transformers import AutoTokenizer, BatchEncoding
+from transformers import AutoTokenizer, BatchEncoding, AutoModelForCausalLM
 from nnsight import LanguageModel
 
 
 def generate_batched(
-    model: LanguageModel,
+    model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
     input_ids_BL: Int[torch.Tensor, "batch_size seq_len"],
     attention_mask_BL: Int[torch.Tensor, "batch_size seq_len"],
@@ -29,7 +29,7 @@ def generate_batched(
             batch_begin : batch_begin + llm_batch_size
         ].to(model.device)
         # Generate using huggingface model
-        output_ids = model._model.generate(
+        output_ids = model.generate(
             input_ids=input_ids,
             attention_mask=attention_mask,
             max_new_tokens=max_new_tokens,

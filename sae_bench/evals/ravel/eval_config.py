@@ -38,6 +38,11 @@ class RAVELEvalConfig(BaseEvalConfig):
         title="Full Dataset Downsample",
         description="Downsample the full dataset to this size.",
     )
+    num_pairs_per_attribute: int = Field(
+        default=100,
+        title="Number of Pairs per Attribute",
+        description="Number of pairs per attribute",
+    )
     force_dataset_recompute: bool = Field(
         default=False,
         title="Force Dataset Recompute",
@@ -71,16 +76,21 @@ class RAVELEvalConfig(BaseEvalConfig):
         description="SAE batch size, inference only",
     )
 
-    # Probe
-    probe_coefficients: List[float] = Field(
-        default=[0.0, 0.01, 0.1, 10, 100, 1000],
-        title="Probe Coefficients",
-        description="Probe coefficients determining the number of patched features.",
-    )
     max_samples_per_attribute: int = Field(
         default=1024,
         title="Max Samples per Attribute",
         description="Indirect definition of probe training datset size, which contains half target attribute and half balanced mix of non-target attributes.",
+    )
+
+    learning_rate: float = Field(
+        default=1e-2,
+        title="Learning Rate",
+        description="Learning rate for the MDBM",
+    )
+    num_epochs: int = Field(
+        default=10,
+        title="Number of Epochs",
+        description="Number of training epochs",
     )
 
     # Intervention

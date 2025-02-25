@@ -390,11 +390,12 @@ def create_filtered_dataset(
     print(f" force_recompute: {force_recompute}")
 
     if force_recompute or not os.path.exists(filename):
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
         # Load and sample data
         print("Tokenizing full dataset")
         full_dataset = RAVELInstance.from_files(
             entity_type=chosen_entity,
-            tokenizer=model.tokenizer,
+            tokenizer=tokenizer,
             data_dir="sae_bench/artifacts/ravel/data/",  # TODO: make this a parameter
             max_prompt_length=max_prompt_length,
             n_samples_per_attribute_class=n_samples_per_attribute_class,
@@ -405,7 +406,7 @@ def create_filtered_dataset(
         # Generate and evaluate completions
         sampled_dataset.generate_completions(
             model,
-            model.tokenizer,
+            tokenizer,
             max_new_tokens=8,
             llm_batch_size=llm_batch_size,
         )
