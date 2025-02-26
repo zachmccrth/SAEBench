@@ -37,6 +37,7 @@ from sae_bench.sae_bench_utils import (
 from sae_bench.sae_bench_utils.sae_selection_utils import (
     get_saes_from_regex,
 )
+import sae_bench.sae_bench_utils.activation_collection as activation_collection
 
 LLM_NAME_MAP = {"gemma-2-2b": "google/gemma-2-2b"}
 
@@ -470,140 +471,121 @@ def run_eval(
     return results_dict
 
 
-# def create_config_and_selected_saes(
-#     args,
-# ) -> tuple[SparseProbingEvalConfig, list[tuple[str, str]]]:
-#     config = SparseProbingEvalConfig(
-#         model_name=args.model_name,
-#     )
+def create_config_and_selected_saes(
+    args,
+) -> tuple[RAVELEvalConfig, list[tuple[str, str]]]:
+    config = RAVELEvalConfig(
+        model_name=args.model_name,
+    )
 
-#     if args.llm_batch_size is not None:
-#         config.llm_batch_size = args.llm_batch_size
-#     else:
-#         config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[
-#             config.model_name
-#         ]
+    if args.llm_batch_size is not None:
+        config.llm_batch_size = args.llm_batch_size
+    else:
+        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[
+            config.model_name
+        ]
 
-#     if args.llm_dtype is not None:
-#         config.llm_dtype = args.llm_dtype
-#     else:
-#         config.llm_dtype = activation_collection.LLM_NAME_TO_DTYPE[config.model_name]
+    if args.llm_dtype is not None:
+        config.llm_dtype = args.llm_dtype
+    else:
+        config.llm_dtype = activation_collection.LLM_NAME_TO_DTYPE[config.model_name]
 
-#     if args.sae_batch_size is not None:
-#         config.sae_batch_size = args.sae_batch_size
+    if args.random_seed is not None:
+        config.random_seed = args.random_seed
 
-#     if args.random_seed is not None:
-#         config.random_seed = args.random_seed
+    selected_saes = get_saes_from_regex(args.sae_regex_pattern, args.sae_block_pattern)
+    assert len(selected_saes) > 0, "No SAEs selected"
 
-#     if args.lower_vram_usage:
-#         config.lower_vram_usage = True
+    releases = set([release for release, _ in selected_saes])
 
-#     selected_saes = get_saes_from_regex(args.sae_regex_pattern, args.sae_block_pattern)
-#     assert len(selected_saes) > 0, "No SAEs selected"
+    print(f"Selected SAEs from releases: {releases}")
 
-#     releases = set([release for release, _ in selected_saes])
+    for release, sae in selected_saes:
+        print(f"Sample SAEs: {release}, {sae}")
 
-#     print(f"Selected SAEs from releases: {releases}")
-
-#     for release, sae in selected_saes:
-#         print(f"Sample SAEs: {release}, {sae}")
-
-#     return config, selected_saes
+    return config, selected_saes
 
 
-# def arg_parser():
-#     parser = argparse.ArgumentParser(description="Run sparse probing evaluation")
-#     parser.add_argument("--random_seed", type=int, default=None, help="Random seed")
-#     parser.add_argument("--model_name", type=str, required=True, help="Model name")
-#     parser.add_argument(
-#         "--sae_regex_pattern",
-#         type=str,
-#         required=True,
-#         help="Regex pattern for SAE selection",
-#     )
-#     parser.add_argument(
-#         "--sae_block_pattern",
-#         type=str,
-#         required=True,
-#         help="Regex pattern for SAE block selection",
-#     )
-#     parser.add_argument(
-#         "--output_folder",
-#         type=str,
-#         default="eval_results/sparse_probing",
-#         help="Output folder",
-#     )
-#     parser.add_argument(
-#         "--force_rerun", action="store_true", help="Force rerun of experiments"
-#     )
-#     parser.add_argument(
-#         "--llm_batch_size",
-#         type=int,
-#         default=None,
-#         help="Batch size for LLM. If None, will be populated using LLM_NAME_TO_BATCH_SIZE",
-#     )
-#     parser.add_argument(
-#         "--llm_dtype",
-#         type=str,
-#         default=None,
-#         choices=[None, "float32", "float64", "float16", "bfloat16"],
-#         help="Data type for LLM. If None, will be populated using LLM_NAME_TO_DTYPE",
-#     )
-#     parser.add_argument(
-#         "--sae_batch_size",
-#         type=int,
-#         default=None,
-#         help="Batch size for SAE. If None, will be populated using default config value",
-#     )
-#     parser.add_argument(
-#         "--lower_vram_usage",
-#         action="store_true",
-#         help="Lower GPU memory usage by doing more computation on the CPU. Useful on 1M width SAEs. Will be slower and require more system memory.",
-#     )
-#     parser.add_argument(
-#         "--artifacts_path",
-#         type=str,
-#         default="artifacts",
-#         help="Path to save artifacts",
-#     )
+def arg_parser():
+    parser = argparse.ArgumentParser(description="Run RAVEL evaluation")
+    parser.add_argument("--random_seed", type=int, default=None, help="Random seed")
+    parser.add_argument("--model_name", type=str, required=True, help="Model name")
+    parser.add_argument(
+        "--sae_regex_pattern",
+        type=str,
+        required=True,
+        help="Regex pattern for SAE selection",
+    )
+    parser.add_argument(
+        "--sae_block_pattern",
+        type=str,
+        required=True,
+        help="Regex pattern for SAE block selection",
+    )
+    parser.add_argument(
+        "--output_folder",
+        type=str,
+        default="eval_results/ravel",
+        help="Output folder",
+    )
+    parser.add_argument(
+        "--force_rerun", action="store_true", help="Force rerun of experiments"
+    )
+    parser.add_argument(
+        "--llm_batch_size",
+        type=int,
+        default=None,
+        help="Batch size for LLM. If None, will be populated using LLM_NAME_TO_BATCH_SIZE",
+    )
+    parser.add_argument(
+        "--llm_dtype",
+        type=str,
+        default=None,
+        choices=[None, "float32", "float64", "float16", "bfloat16"],
+        help="Data type for LLM. If None, will be populated using LLM_NAME_TO_DTYPE",
+    )
+    parser.add_argument(
+        "--artifacts_path",
+        type=str,
+        default="artifacts",
+        help="Path to save artifacts",
+    )
 
-#     return parser
+    return parser
 
 
-# if __name__ == "__main__":
-#     """
-#     python -m sae_bench.evals.ravel.main \
-#     --sae_regex_pattern "sae_bench_gemma-2-2b_topk_width-2pow14_date-1109" \
-#     --sae_block_pattern "blocks.12.hook_resid_post__trainer_2" \
-#     --model_name gemma-2-2b
+if __name__ == "__main__":
+    """
+    python -m sae_bench.evals.ravel.main \
+    --sae_regex_pattern "sae_bench_gemma-2-2b_topk_width-2pow14_date-1109" \
+    --sae_block_pattern "blocks.12.hook_resid_post__trainer_2" \
+    --model_name gemma-2-2b
+    """
+    args = arg_parser().parse_args()
+    device = general_utils.setup_environment()
 
+    start_time = time.time()
 
-#     """
-#     args = arg_parser().parse_args()
-#     device = general_utils.setup_environment()
+    config, selected_saes = create_config_and_selected_saes(args)
 
-#     start_time = time.time()
+    print(selected_saes)
 
-#     config, selected_saes = create_config_and_selected_saes(args)
+    # create output folder
+    os.makedirs(args.output_folder, exist_ok=True)
 
-#     print(selected_saes)
+    # run the evaluation on all selected SAEs
+    results_dict = run_eval(
+        config,
+        selected_saes,
+        device,
+        args.output_folder,
+        args.force_rerun,
+        artifacts_path=args.artifacts_path,
+    )
 
-#     # create output folder
-#     os.makedirs(args.output_folder, exist_ok=True)
+    end_time = time.time()
 
-#     # run the evaluation on all selected SAEs
-#     results_dict = run_eval(
-#         config,
-#         selected_saes,
-#         device,
-#         args.output_folder,
-#         args.force_rerun,
-#         artifacts_path=args.artifacts_path,
-#     )
-
-#     end_time = time.time()
-
-#     print(f"Finished evaluation in {end_time - start_time} seconds")
+    print(f"Finished evaluation in {end_time - start_time} seconds")
 
 
 # Use this code snippet to use custom SAE objects
@@ -612,14 +594,14 @@ def run_eval(
 #     import sae_bench.custom_saes.jumprelu_sae as jumprelu_sae
 
 #     """
-#     python evals/sparse_probing/main.py
+#     python evals/ravel/main.py
 #     """
 #     device = general_utils.setup_environment()
 
 #     start_time = time.time()
 
 #     random_seed = 42
-#     output_folder = "eval_results/sparse_probing"
+#     output_folder = "eval_results/ravel"
 
 #     model_name = "gemma-2-2b"
 #     hook_layer = 20
@@ -629,7 +611,7 @@ def run_eval(
 #     sae = jumprelu_sae.load_jumprelu_sae(repo_id, filename, hook_layer)
 #     selected_saes = [(f"{repo_id}_{filename}_gemmascope_sae", sae)]
 
-#     config = SparseProbingEvalConfig(
+#     config = RAVELEvalConfig(
 #         random_seed=random_seed,
 #         model_name=model_name,
 #     )
