@@ -29,8 +29,8 @@ poetry.lock
 
 auth/*
 
-evals/ravel/data/
-evals/ravel/models/
+sae_bench/evals/ravel/data/
+sae_bench/evals/ravel/models/
 
 # unlearning: the forget dataset cannot be uploaded
 **bio-forget-corpus.jsonl
