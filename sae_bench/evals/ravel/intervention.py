@@ -13,12 +13,19 @@ eval_config = RAVELEvalConfig()
 rng = random.Random(eval_config.random_seed)
 
 
-def recursively_match_prompts(base_prompt, source_prompts):
-    source_prompt = rng.choice(source_prompts)
-    if source_prompt.attribute_label != base_prompt.attribute_label:
-        return source_prompt
-    else:
-        return recursively_match_prompts(base_prompt, source_prompts)
+def get_different_attribute_prompt(base_prompt, source_prompts):
+    """
+    Select a random prompt from source_prompts that has a different attribute_label
+    than the base_prompt.
+    """
+    different_prompts = [
+        p for p in source_prompts if p.attribute_label != base_prompt.attribute_label
+    ]
+    if not different_prompts:
+        raise ValueError(
+            f"No prompts with different attribute label found for {base_prompt.attribute_label}"
+        )
+    return rng.choice(different_prompts)
 
 
 def sample_prompts_by_attribute(dataset, attribute, n_samples):
@@ -52,7 +59,7 @@ def get_prompt_pairs(dataset, base_attribute, source_attribute, n_interventions)
         all_source_prompts = all_base_prompts
         source_prompts = []
         for p in base_prompts:
-            source_prompts.append(recursively_match_prompts(p, all_source_prompts))
+            source_prompts.append(get_different_attribute_prompt(p, all_source_prompts))
 
     min_length = min(len(base_prompts), len(source_prompts))
     return base_prompts[:min_length], source_prompts[:min_length]
