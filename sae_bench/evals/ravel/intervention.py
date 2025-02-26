@@ -8,7 +8,6 @@ from typing import List, Dict
 
 from sae_bench.evals.ravel.instance import Prompt, evaluate_completion
 from sae_bench.evals.ravel.eval_config import RAVELEvalConfig
-from sae_bench.evals.ravel.eval_output import RAVELResultDetail
 
 eval_config = RAVELEvalConfig()
 rng = random.Random(eval_config.random_seed)

@@ -14,6 +14,7 @@ import sae_bench.custom_saes.topk_sae as topk_sae
 import sae_bench.evals.absorption.main as absorption
 import sae_bench.evals.autointerp.main as autointerp
 import sae_bench.evals.core.main as core
+import sae_bench.evals.ravel.main as ravel
 import sae_bench.evals.scr_and_tpp.main as scr_and_tpp
 import sae_bench.evals.sparse_probing.main as sparse_probing
 import sae_bench.evals.unlearning.main as unlearning
@@ -48,6 +49,7 @@ output_folders = {
     "tpp": "eval_results/tpp",
     "sparse_probing": "eval_results/sparse_probing",
     "unlearning": "eval_results/unlearning",
+    "ravel": "eval_results/ravel",
 }
 
 
@@ -210,6 +212,20 @@ def run_evals(
                 verbose=True,
                 dtype=llm_dtype,
                 device=device,
+            )
+        ),
+        "ravel": (
+            lambda selected_saes, is_final: ravel.run_eval(
+                ravel.RAVELEvalConfig(
+                    model_name=model_name,
+                    random_seed=random_seed,
+                    # llm_batch_size=llm_batch_size,
+                    llm_dtype=llm_dtype,
+                ),
+                selected_saes,
+                device,
+                "eval_results/ravel",
+                force_rerun,
             )
         ),
         "scr": (

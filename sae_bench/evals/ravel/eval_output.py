@@ -33,45 +33,16 @@ class RAVELMetricResults(BaseMetrics):
 
 @dataclass
 class RAVELMetricCategories(BaseMetricCategories):
-    sae: RAVELMetricResults = Field(
+    ravel: RAVELMetricResults = Field(
         title="RAVEL",
         description="RAVEL metrics",
         json_schema_extra=DEFAULT_DISPLAY,
-    )
-# TODO revisit category split after inspecting results
-
-
-@dataclass
-class RAVELResultDetail(BaseResultDetail):
-    entity_class: str = Field(
-        title="Entity Class",
-        description="Entity Class",
-    )
-    attribute_classes: list[str] = Field(
-        title="Attribute Classes",
-        description="Attribute Classes",
-    )
-    cause_scores: dict[float, list[float]] = Field(
-        title="Cause Scores",
-        description="1D row of cause scores, ordered by attribute_classes. Cause score: Patching attribute-related SAE latents. High cause accuracy indicates that the SAE latents are related to the attribute.",
-    )
-    isolation_scores: dict[float, list[list[float]]] = Field(
-        title="Isolation Scores",
-        description="2D row of isolation scores, ordered by attribute_classes(base) x attribute_classes(source). Isolation score: Patching SAE latents related to another attribute. High isolation accuracy indicates that latents related to another attribute are not related to this attribute.",
-    )
-    mean_disentanglement: dict[float, float] = Field(
-        title="Mean Disentanglement",
-        description="Mean of cause and disentanglement with balanced weights: Mean(mean(cause_scores), mean(isolation_scores)).",
     )
 
 
 @dataclass(config=ConfigDict(title="RAVEL"))
 class RAVELEvalOutput(
-    BaseEvalOutput[
-        RAVELEvalConfig,
-        RAVELMetricCategories,
-        RAVELResultDetail
-    ]
+    BaseEvalOutput[RAVELEvalConfig, RAVELMetricCategories, BaseResultDetail]
 ):
     # This will end up being the description of the eval in the UI.
     """
@@ -82,9 +53,4 @@ class RAVELEvalOutput(
     eval_id: str
     datetime_epoch_millis: int
     eval_result_metrics: RAVELMetricCategories
-    eval_result_details: list[RAVELResultDetail] = Field(
-        default_factory=list,
-        title="Per-Entity-Dataset RAVEL Results",
-        description="Each object is a stat on the RAVEL results for an entity dataset.",
-    )
     eval_type_id: str = Field(default=EVAL_TYPE_ID_RAVEL)

@@ -18,17 +18,17 @@ class RAVELEvalConfig(BaseEvalConfig):
         description="Subset of the RAVEL datset to be evaluated. Each key is an entity class, and the value is a list of at least two attribute classes.",
     )
     n_samples_per_attribute_class: int = Field(
-        default=100,
+        default=1000,
         title="Number of Samples per Attribute Class",
         description="Number of samples per attribute class. If None, all samples are used.",
     )
     top_n_entities: int = Field(
-        default=100,
+        default=500,
         title="Number of distinct entities in the dataset",
         description="Number of entities in the dataset, filtered by prediction accuracy over attributes / templates.",
     )
     top_n_templates: int = Field(
-        default=100,
+        default=500,
         title="Number of distinct templates in the dataset",
         description="Number of templates in the dataset, filtered by prediction accuracy over entities.",
     )
@@ -38,7 +38,7 @@ class RAVELEvalConfig(BaseEvalConfig):
         description="Downsample the full dataset to this size.",
     )
     num_pairs_per_attribute: int = Field(
-        default=200,
+        default=500,
         title="Number of Pairs per Attribute",
         description="Number of pairs per attribute",
     )
@@ -87,12 +87,12 @@ class RAVELEvalConfig(BaseEvalConfig):
     )
 
     learning_rate: float = Field(
-        default=1e-2,
+        default=1e-3,
         title="Learning Rate",
         description="Learning rate for the MDBM",
     )
     num_epochs: int = Field(
-        default=10,
+        default=5,
         title="Number of Epochs",
         description="Number of training epochs",
     )
@@ -127,9 +127,9 @@ class RAVELEvalConfig(BaseEvalConfig):
     )
 
     if DEBUG_MODE:
-        n_samples_per_attribute_class = 100
-        top_n_entities = 100
-        top_n_templates = 10
+        n_samples_per_attribute_class = 500
+        top_n_entities = 500
+        top_n_templates = 500
 
-        n_interventions = 10
-        llm_batch_size = 5
+        n_interventions = 500
+        llm_batch_size = 10

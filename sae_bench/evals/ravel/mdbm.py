@@ -270,7 +270,7 @@ def train_mdbm(
     train_loader,
     val_loader,
     verbose: bool = False,
-):
+) -> dict[str, float]:
     initial_temperature = 1e-2
     final_temperature = 1e-7
     temperature_schedule = torch.logspace(
@@ -297,14 +297,14 @@ def train_mdbm(
 
     optimizer = torch.optim.Adam([mdbm.binary_mask], lr=config.learning_rate)
 
-    # Get initial validation loss
-    (
-        initial_val_loss,
-        initial_val_accuracy,
-        initial_val_cause_score,
-        initial_val_isolation_score,
-    ) = get_validation_loss(mdbm, val_loader)
     if verbose:
+        # Get initial validation loss
+        (
+            initial_val_loss,
+            initial_val_accuracy,
+            initial_val_cause_score,
+            initial_val_isolation_score,
+        ) = get_validation_loss(mdbm, val_loader)
         print(
             f"Initial validation loss: {initial_val_loss:.4f}, accuracy: {initial_val_accuracy:.4f}, cause score: {initial_val_cause_score:.4f}, isolation score: {initial_val_isolation_score:.4f}"
         )
@@ -352,12 +352,15 @@ def train_mdbm(
         avg_train_loss = train_loss / batch_count if batch_count > 0 else 0
         avg_train_accuracy = train_accuracy / batch_count if batch_count > 0 else 0
         # Validation
-        avg_val_loss, avg_val_accuracy, avg_val_cause_score, avg_val_isolation_score = (
-            get_validation_loss(mdbm, val_loader)
-        )
 
         # Print losses if verbose
         if verbose:
+            (
+                avg_val_loss,
+                avg_val_accuracy,
+                avg_val_cause_score,
+                avg_val_isolation_score,
+            ) = get_validation_loss(mdbm, val_loader)
             percent_above_zero = (mdbm.binary_mask > 0).float().mean().item()
             print(
                 f"Epoch {epoch + 1}/{config.num_epochs} - "
@@ -371,15 +374,15 @@ def train_mdbm(
             )
 
         # Early stopping
-        if avg_val_loss < best_val_loss:
-            best_val_loss = avg_val_loss
-            patience_counter = 0
-            if verbose:
-                print(f"  New best validation loss: {best_val_loss:.4f}")
-        else:
-            patience_counter += 1
-            if verbose:
-                print(f"  No improvement for {patience_counter} epochs")
+        # if avg_val_loss < best_val_loss:
+        #     best_val_loss = avg_val_loss
+        #     patience_counter = 0
+        #     if verbose:
+        #         print(f"  New best validation loss: {best_val_loss:.4f}")
+        # else:
+        #     patience_counter += 1
+        #     if verbose:
+        #         print(f"  No improvement for {patience_counter} epochs")
 
         # if patience_counter >= config.early_stop_patience:
         #     print(f"Early stopping at epoch {epoch + 1}")
@@ -388,4 +391,21 @@ def train_mdbm(
     if verbose:
         print(f"Training complete. Best validation loss: {best_val_loss:.4f}")
 
-    return mdbm
+    (
+        final_val_loss,
+        final_val_accuracy,
+        final_val_cause_score,
+        final_val_isolation_score,
+    ) = get_validation_loss(mdbm, val_loader)
+
+    disentangle_score = (final_val_cause_score + final_val_isolation_score) / 2
+
+    results = {
+        "val_loss": final_val_loss,
+        "val_accuracy": final_val_accuracy,
+        "disentangle_score": disentangle_score,
+        "cause_score": final_val_cause_score,
+        "isolation_score": final_val_isolation_score,
+    }
+
+    return results
