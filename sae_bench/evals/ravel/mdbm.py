@@ -47,6 +47,7 @@ def apply_binary_mask(
     sae: sae_lens.SAE,
     temperature: float,
     base_pos_B: torch.Tensor,
+    training_mode: bool = False,
 ) -> torch.Tensor:
     acts_BLD = None
 
@@ -60,7 +61,12 @@ def apply_binary_mask(
         source_act_BF = sae.encode(source_rep_BD)
         resid_BD = resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :]
         base_act_BF = sae.encode(resid_BD)
-        mask_values_F = torch.sigmoid(binary_mask_F / temperature)
+
+        # Use true binary mask in eval mode, sigmoid in training mode
+        if not training_mode:
+            mask_values_F = (binary_mask_F > 0).to(dtype=binary_mask_F.dtype)
+        else:
+            mask_values_F = torch.sigmoid(binary_mask_F / temperature)
 
         modified_act_BF = (
             1 - mask_values_F
@@ -105,7 +111,14 @@ class MDBM(nn.Module):
         self.device = model.device
         self.temperature: float = 1e-2
 
-    def forward(self, base_encoding_BL, source_encoding_BL, base_pos_B, source_pos_B):
+    def forward(
+        self,
+        base_encoding_BL,
+        source_encoding_BL,
+        base_pos_B,
+        source_pos_B,
+        training_mode: bool = False,
+    ):
         with torch.no_grad():
             # Get source representation
             source_rep = get_layer_activations(
@@ -121,6 +134,7 @@ class MDBM(nn.Module):
             self.sae,
             self.temperature,
             base_pos_B,
+            training_mode,
         )
 
         predicted = logits.argmax(dim=-1)
@@ -137,9 +151,18 @@ class MDBM(nn.Module):
         Compute multi-task loss combining:
         - Cause loss: Target attribute should match source
         - Iso loss: Other attributes should match base
+
+        Returns:
+            Tuple of (loss, accuracy) where accuracy is the raw prediction accuracy
+            for the final token
         """
         cause_loss = F.cross_entropy(intervened_logits_BLV[:, -1, :], target_attr_B)
-        return cause_loss
+
+        # Calculate accuracy
+        predictions = intervened_logits_BLV[:, -1, :].argmax(dim=-1)
+        accuracy = (predictions == target_attr_B).float().mean()
+
+        return cause_loss, accuracy
 
         # iso_losses = []
         # for attr in other_attrs:
@@ -153,6 +176,7 @@ def get_validation_loss(mdbm: MDBM, val_loader: torch.utils.data.DataLoader):
     """Compute validation loss across the validation dataset"""
     mdbm.eval()
     val_loss = 0
+    val_accuracy = 0
     val_batch_count = 0
 
     with torch.no_grad():
@@ -168,11 +192,14 @@ def get_validation_loss(mdbm: MDBM, val_loader: torch.utils.data.DataLoader):
             intervened_logits_BLV, _ = mdbm(
                 base_encodings_BL, source_encodings_BL, base_pos_B, source_pos_B
             )
-            val_loss += mdbm.compute_loss(intervened_logits_BLV, base_pred_B).item()
+            loss, accuracy = mdbm.compute_loss(intervened_logits_BLV, source_pred_B)
+            val_loss += loss.item()
+            val_accuracy += accuracy.item()
             val_batch_count += 1
 
     avg_val_loss = val_loss / val_batch_count if val_batch_count > 0 else 0
-    return avg_val_loss
+    avg_val_accuracy = val_accuracy / val_batch_count if val_batch_count > 0 else 0
+    return avg_val_loss, avg_val_accuracy
 
 
 def train_mdbm(
@@ -200,14 +227,14 @@ def train_mdbm(
         config,
         sae,
     ).to(model.device)
-    optimizer = torch.optim.Adam(
-        [p for p in mdbm.parameters() if p is mdbm.binary_mask], lr=config.learning_rate
-    )
+    optimizer = torch.optim.Adam([mdbm.binary_mask], lr=config.learning_rate)
 
     # Get initial validation loss
-    initial_val_loss = get_validation_loss(mdbm, val_loader)
+    initial_val_loss, initial_val_accuracy = get_validation_loss(mdbm, val_loader)
     if verbose:
-        print(f"Initial validation loss: {initial_val_loss:.4f}")
+        print(
+            f"Initial validation loss: {initial_val_loss:.4f}, accuracy: {initial_val_accuracy:.4f}"
+        )
 
     best_val_loss = initial_val_loss
     patience_counter = 0
@@ -216,6 +243,7 @@ def train_mdbm(
         mdbm.temperature = temperature_schedule[epoch].item()
         mdbm.train()
         train_loss = 0
+        train_accuracy = 0
         batch_count = 0
 
         for batch in train_loader:
@@ -231,29 +259,38 @@ def train_mdbm(
             optimizer.zero_grad()
 
             intervened_logits_BLV, _ = mdbm(
-                base_encodings_BL, source_encodings_BL, base_pos_B, source_pos_B
+                base_encodings_BL,
+                source_encodings_BL,
+                base_pos_B,
+                source_pos_B,
+                training_mode=True,
             )
-            loss = mdbm.compute_loss(
-                intervened_logits_BLV, base_pred_B
+            loss, accuracy = mdbm.compute_loss(
+                intervened_logits_BLV, source_pred_B
             )  # TODO: only caus score currently used, add iso score
 
             loss.backward()
             optimizer.step()
 
             train_loss += loss.item()
+            train_accuracy += accuracy.item()
             batch_count += 1
 
         avg_train_loss = train_loss / batch_count if batch_count > 0 else 0
-
+        avg_train_accuracy = train_accuracy / batch_count if batch_count > 0 else 0
         # Validation
-        avg_val_loss = get_validation_loss(mdbm, val_loader)
+        avg_val_loss, avg_val_accuracy = get_validation_loss(mdbm, val_loader)
 
         # Print losses if verbose
         if verbose:
+            percent_above_zero = (mdbm.binary_mask > 0).float().mean().item()
             print(
                 f"Epoch {epoch + 1}/{config.num_epochs} - "
                 f"Train Loss: {avg_train_loss:.4f}, "
-                f"Val Loss: {avg_val_loss:.4f}"
+                f"Train Accuracy: {avg_train_accuracy:.4f}, "
+                f"Val Loss: {avg_val_loss:.4f}, "
+                f"Val Accuracy: {avg_val_accuracy:.4f}, "
+                f"Percent above zero: {percent_above_zero:.4f}"
             )
 
         # Early stopping
