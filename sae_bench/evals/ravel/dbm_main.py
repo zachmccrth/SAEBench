@@ -1,6 +1,7 @@
 import torch
 from transformers import BatchEncoding, AutoTokenizer, AutoModelForCausalLM
 import sae_lens
+import random
 
 import sae_bench.evals.ravel.mdbm as mdbm
 from sae_bench.evals.ravel.eval_config import RAVELEvalConfig
@@ -9,7 +10,13 @@ from sae_bench.evals.ravel.intervention import get_prompt_pairs
 
 
 def create_dataloaders(
-    cause_base_prompts, cause_source_prompts, model, eval_config, train_test_split=0.5
+    cause_base_prompts,
+    cause_source_prompts,
+    iso_base_prompts,
+    iso_source_prompts,
+    model,
+    eval_config,
+    train_test_split=0.5,
 ):
     """
     Create train and validation dataloaders from prompt pairs.
@@ -48,12 +55,38 @@ def create_dataloaders(
             )
         )
 
+    formatted_iso_pairs = []
+    for base, source in zip(iso_base_prompts, iso_source_prompts):
+        base_tokens_L = base.input_ids
+        base_attn_mask_L = base.attention_mask
+        base_pos = base.final_entity_token_pos
+        base_pred = base.first_generated_token_id
+        source_tokens_L = source.input_ids
+        source_attn_mask_L = source.attention_mask
+        source_pos = source.final_entity_token_pos
+        source_pred = source.first_generated_token_id
+        formatted_iso_pairs.append(
+            (
+                base_tokens_L,
+                source_tokens_L,
+                base_attn_mask_L,
+                source_attn_mask_L,
+                base_pos,
+                source_pos,
+                base_pred,
+                base_pred,  # This is the only difference for iso pairs - we don't want this to change
+            )
+        )
+
+    all_formatted_pairs = formatted_cause_pairs + formatted_iso_pairs
+    random.shuffle(all_formatted_pairs)
+
     # Split into train and validation sets
-    total_pairs = len(formatted_cause_pairs)
+    total_pairs = len(all_formatted_pairs)
     train_size = int(total_pairs * train_test_split)
 
-    train_pairs = formatted_cause_pairs[:train_size]
-    val_pairs = formatted_cause_pairs[train_size:]
+    train_pairs = all_formatted_pairs[:train_size]
+    val_pairs = all_formatted_pairs[train_size:]
 
     print(
         f"Created {len(train_pairs)} training pairs and {len(val_pairs)} validation pairs"
@@ -227,8 +260,8 @@ def inspect_dataloader(
                 source_pred_token = tokenizer.decode([source_prediction])
 
                 # Print everything
-                print(f"  BASE TEXT: {base_text[:max_len]}... (truncated)")
-                print(f"  SOURCE TEXT: {source_text[:max_len]}... (truncated)")
+                print(f"  BASE TEXT: {base_text}")
+                print(f"  SOURCE TEXT: {source_text}")
                 print(f"  BASE POSITION: {base_position}")
                 print(f"  SOURCE POSITION: {source_position}")
                 print(f"  TOKEN AT BASE POSITION: '{base_token_at_pos}'")
@@ -242,6 +275,9 @@ def inspect_dataloader(
 
 
 def main():
+    random.seed(42)
+    torch.manual_seed(42)
+
     eval_config = RAVELEvalConfig()
     device = "cuda:0"
     # Load model
@@ -302,9 +338,9 @@ def main():
         full_dataset_downsample=eval_config.full_dataset_downsample,
     )
 
-    # We are only computing cause
-    attribute = "Country"
-    other_attribute = "Continent"
+    cause_attribute = "Country"
+    # iso_attributes = ["Continent", "Language"]
+    iso_attributes = ["Language"]
 
     chosen_attributes = eval_config.entity_attribute_selection[entity_class]
     available_attributes = dataset.get_attributes()
@@ -317,14 +353,41 @@ def main():
     # get cause_pairs (target_attr_prompt)
     cause_base_prompts, cause_source_prompts = get_prompt_pairs(
         dataset=dataset,
-        base_attribute=attribute,
-        source_attribute=attribute,
+        base_attribute=cause_attribute,
+        source_attribute=cause_attribute,
         n_interventions=eval_config.num_pairs_per_attribute,  # //2
+    )
+
+    iso_base_prompts = []
+    iso_source_prompts = []
+    for iso_attr in iso_attributes:
+        attr_base_prompts, attr_source_prompts = get_prompt_pairs(
+            dataset=dataset,
+            base_attribute=iso_attr,
+            source_attribute=iso_attr,
+            n_interventions=eval_config.num_pairs_per_attribute,  # //2
+        )
+        iso_base_prompts.extend(attr_base_prompts)
+        iso_source_prompts.extend(attr_source_prompts)
+
+    combined = list(zip(iso_base_prompts, iso_source_prompts))
+    random.shuffle(combined)
+    iso_base_prompts, iso_source_prompts = zip(*combined)
+
+    # Truncate to match the length of cause prompts
+    cause_length = len(cause_base_prompts)
+    iso_base_prompts = list(iso_base_prompts[:cause_length])
+    iso_source_prompts = list(iso_source_prompts[:cause_length])
+
+    print(
+        f"Using {len(cause_base_prompts)} cause prompt pairs and {len(iso_base_prompts)} ISO prompt pairs"
     )
 
     train_loader, val_loader = create_dataloaders(
         cause_base_prompts,
         cause_source_prompts,
+        iso_base_prompts,
+        iso_source_prompts,
         model,
         eval_config,
         train_test_split=0.5,
