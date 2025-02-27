@@ -33,7 +33,7 @@ class RAVELEvalConfig(BaseEvalConfig):
         description="Number of templates in the dataset, filtered by prediction accuracy over entities.",
     )
     full_dataset_downsample: int = Field(
-        default=10000,
+        default=101,
         title="Full Dataset Downsample",
         description="Downsample the full dataset to this size.",
     )
@@ -70,7 +70,7 @@ class RAVELEvalConfig(BaseEvalConfig):
         description="LLM data type",
     )
     llm_batch_size: int = Field(
-        default=32,
+        default=2048,
         title="LLM Batch Size",
         description="LLM batch size, inference only",
     )
@@ -104,7 +104,7 @@ class RAVELEvalConfig(BaseEvalConfig):
         description="Number of interventions per attribute feature threshold, ie. number of experiments to compute a single cause / isolation score.",
     )
     n_generated_tokens: int = Field(
-        default=8,
+        default=6,
         title="Number of Generated Tokens",
         description="Number of tokens to generate for each intervention. 8 was used in the RAVEL paper",
     )

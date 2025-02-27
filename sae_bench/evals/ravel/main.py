@@ -18,7 +18,7 @@ import random
 
 import sae_bench.evals.ravel.mdbm as mdbm
 from sae_bench.evals.ravel.eval_config import RAVELEvalConfig
-from sae_bench.evals.ravel.instance import create_filtered_dataset
+from sae_bench.evals.ravel.instance import RAVELInstance, RAVELFilteredDataset
 from sae_bench.evals.ravel.intervention import get_prompt_pairs
 from sae_bench.evals.ravel.eval_output import (
     RAVELMetricCategories,
@@ -291,18 +291,31 @@ def run_eval_single_dataset(
     """config: eval_config.EvalConfig contains all hyperparameters to reproduce the evaluation.
     It is saved in the results_dict for reproducibility."""
 
-    dataset = create_filtered_dataset(
-        model_id=config.model_name,
-        chosen_entity=entity_class,
+    ##########################
+    # TODO: Replace this with loading artifacts from huggingface / disk, once the full dataset is pre-computed.
+    tokenizer = AutoTokenizer.from_pretrained(config.model_name)
+    full_dataset = RAVELInstance.create_from_files(
+        entity_type=entity_class,
+        tokenizer=tokenizer,
+        data_dir=config.artifact_dir,
         model=model,
-        force_recompute=config.force_dataset_recompute,
-        n_samples_per_attribute_class=config.n_samples_per_attribute_class,
-        top_n_entities=config.top_n_entities,
-        top_n_templates=config.top_n_templates,
-        artifact_dir=config.artifact_dir,
-        full_dataset_downsample=config.full_dataset_downsample,
+        model_name=config.model_name,
+        downsample=config.full_dataset_downsample,
     )
 
+    # Create filtered dataset.
+    filtered_dataset = full_dataset.create_and_save_filtered_dataset(
+        artifact_dir=config.artifact_dir,
+        top_n_entities=config.top_n_entities,
+    )
+
+    # Test loading the filtered dataset.
+    filtered_dataset_filename = filtered_dataset.config["instance_name"] + "_filtered_dataset.json"
+    filtered_dataset_path = os.path.join(config.artifact_dir, filtered_dataset_filename)
+    dataset = RAVELFilteredDataset.load(filtered_dataset_path)
+    ##########################
+    
+    
     attributes = config.entity_attribute_selection[entity_class]
 
     results_dict = {"cause_score": [], "isolation_score": [], "disentangle_score": []}

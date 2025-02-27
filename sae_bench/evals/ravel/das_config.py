@@ -23,27 +23,27 @@ class DASConfig(BaseEvalConfig):
         title="Force Dataset Recompute",
         description="Force recomputation of dataset",
     )
-    n_samples_per_attribute_class: int = Field(
+    n_samples_per_attribute_class: int = Field( # constraint
         default=100,
         title="Samples per Attribute Class",
         description="Number of samples per attribute class",
     )
-    top_n_entities: int = Field(
+    top_n_entities: int = Field( # what is top entities? can we just go with n samples?
         default=100,
         title="Top N Entities",
         description="Number of top entities to use for dataset",
     )
-    top_n_templates: int = Field(
+    top_n_templates: int = Field( # what is top templates? can we just go with n samples?
         default=100,
         title="Top N Templates",
         description="Number of top templates to use for dataset",
     )
-    full_dataset_downsample: int = Field(
+    full_dataset_downsample: int = Field( # change to num known pairs
         default=10000,
         title="Full Dataset Downsample",
         description="Downsample the full dataset to this size.",
     )
-    num_pairs_per_attribute: int = Field(
+    num_pairs_per_attribute: int = Field( # change to num samples per attribute
         default=100,
         title="Number of Pairs per Attribute",
         description="Number of pairs per attribute",
