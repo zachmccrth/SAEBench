@@ -7,6 +7,7 @@ from tqdm import tqdm
 import sae_bench.evals.absorption.main as absorption
 import sae_bench.evals.autointerp.main as autointerp
 import sae_bench.evals.core.main as core
+import sae_bench.evals.ravel.main as ravel
 import sae_bench.evals.scr_and_tpp.main as scr_and_tpp
 import sae_bench.evals.sparse_probing.main as sparse_probing
 import sae_bench.evals.unlearning.main as unlearning
@@ -24,7 +25,7 @@ MODEL_CONFIGS = {
     "gemma-2-2b": {
         "batch_size": 32,
         "dtype": "bfloat16",
-        "layers": [5, 12, 19],
+        "layers": [12],
         "d_model": 2304,
     },
 }
@@ -37,6 +38,7 @@ output_folders = {
     "tpp": "eval_results/tpp",
     "sparse_probing": "eval_results/sparse_probing",
     "unlearning": "eval_results/unlearning",
+    "ravel": "eval_results/ravel",
 }
 
 
@@ -103,6 +105,20 @@ def run_evals(
                 verbose=True,
                 dtype=llm_dtype,
                 device=device,
+            )
+        ),
+        "ravel": (
+            lambda: ravel.run_eval(
+                ravel.RAVELEvalConfig(
+                    model_name=model_name,
+                    random_seed=RANDOM_SEED,
+                    llm_batch_size=llm_batch_size,
+                    llm_dtype=llm_dtype,
+                ),
+                selected_saes,
+                device,
+                "eval_results/ravel",
+                force_rerun,
             )
         ),
         "scr": (
@@ -217,6 +233,7 @@ if __name__ == "__main__":
         "absorption",
         "autointerp",
         "core",
+        "ravel",
         "scr",
         "tpp",
         "sparse_probing",

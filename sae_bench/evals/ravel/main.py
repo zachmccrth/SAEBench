@@ -290,6 +290,7 @@ def run_eval_single_cause_attribute(
         train_loader=train_loader,
         val_loader=val_loader,
         verbose=True,
+        train_mdas=config.train_mdas,
     )
 
     iso_score, cause_score = intervention.generate_batched_interventions(
@@ -390,10 +391,7 @@ def run_eval_single_sae(
     device: str,
     artifacts_folder: str,
 ) -> tuple[dict[str, float | dict[str, float]], dict]:
-    """hook_point: str is transformer lens format. example: f'blocks.{layer}.hook_resid_post'
-    By default, we save activations for all datasets, and then reuse them for each sae.
-    This is important to avoid recomputing activations for each SAE, and to ensure that the same activations are used for all SAEs.
-    However, it can use 10s of GBs of disk space."""
+    """NOTE: This is currently setup for Transformers, not TransformerLens models."""
 
     random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
@@ -435,8 +433,6 @@ def run_eval(
     """
     selected_saes is a list of either tuples of (sae_lens release, sae_lens id) or (sae_name, SAE object)
 
-    If clean_up_activations is True, which means that the activations are deleted after the evaluation is done.
-    You may want to use this because activations for all datasets can easily be 10s of GBs.
     Return dict is a dict of SAE name: evaluation results for that SAE."""
     eval_instance_id = get_eval_uuid()
     sae_lens_version = get_sae_lens_version()
@@ -469,6 +465,11 @@ def run_eval(
             sae_release, sae_object_or_id, device
         )  # type: ignore
         sae = sae.to(device=device, dtype=llm_dtype)
+
+        if config.train_mdas:
+            sae_release = "mdas"
+            sae_id = "mdas"
+            assert len(selected_saes) == 1
 
         sae_result_path = general_utils.get_results_filepath(
             output_path, sae_release, sae_id
@@ -546,6 +547,10 @@ def create_config_and_selected_saes(
     if args.random_seed is not None:
         config.random_seed = args.random_seed
 
+    if args.train_mdas:
+        config.train_mdas = args.train_mdas
+        config.num_epochs = 10
+
     selected_saes = get_saes_from_regex(args.sae_regex_pattern, args.sae_block_pattern)
     assert len(selected_saes) > 0, "No SAEs selected"
 
@@ -602,6 +607,11 @@ def arg_parser():
         type=str,
         default="artifacts",
         help="Path to save artifacts",
+    )
+    parser.add_argument(
+        "--train_mdas",
+        action="store_true",
+        help="Train MDAS instead of SAEs",
     )
 
     return parser

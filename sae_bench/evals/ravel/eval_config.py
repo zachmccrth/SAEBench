@@ -75,7 +75,11 @@ class RAVELEvalConfig(BaseEvalConfig):
         title="Number of Epochs",
         description="Number of training epochs",
     )
-
+    train_mdas: bool = Field(
+        default=False,
+        title="Train MDAS",
+        description="If True, we completely ignore the SAE and train an MDAS instead.",
+    )
     # Intervention
     n_generated_tokens: int = Field(
         default=6,

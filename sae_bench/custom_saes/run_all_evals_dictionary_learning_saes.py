@@ -219,7 +219,7 @@ def run_evals(
                 ravel.RAVELEvalConfig(
                     model_name=model_name,
                     random_seed=random_seed,
-                    # llm_batch_size=llm_batch_size,
+                    llm_batch_size=llm_batch_size,
                     llm_dtype=llm_dtype,
                 ),
                 selected_saes,
