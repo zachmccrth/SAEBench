@@ -8,7 +8,7 @@ from jaxtyping import Bool, Float, Int, jaxtyped
 from sae_lens import SAE
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, BatchEncoding
 
 # Relevant at ctx len 128
 LLM_NAME_TO_BATCH_SIZE = {
@@ -37,6 +37,37 @@ def get_module(model: AutoModelForCausalLM, layer_num: int) -> torch.nn.Module:
         raise ValueError(
             f"Model {model.config.architectures[0]} not supported, please add the appropriate module"
         )
+
+
+def get_layer_activations(
+    model: AutoModelForCausalLM,
+    target_layer: int,
+    inputs: BatchEncoding,
+    source_pos_B: torch.Tensor,
+) -> torch.Tensor:
+    acts_BLD = None
+
+    def gather_target_act_hook(module, inputs, outputs):
+        nonlocal acts_BLD
+        acts_BLD = outputs[0]
+        return outputs
+
+    handle = get_module(model, target_layer).register_forward_hook(
+        gather_target_act_hook
+    )
+
+    _ = model(
+        input_ids=inputs["input_ids"].to(model.device),
+        attention_mask=inputs.get("attention_mask", None),
+    )
+
+    handle.remove()
+
+    assert acts_BLD is not None
+
+    acts_BD = acts_BLD[list(range(acts_BLD.shape[0])), source_pos_B, :]
+
+    return acts_BD
 
 
 @jaxtyped(typechecker=beartype)

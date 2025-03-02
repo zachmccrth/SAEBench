@@ -4,10 +4,15 @@ from typing import Optional, Union, List
 import torch
 from transformers import AutoTokenizer, BatchEncoding, AutoModelForCausalLM
 
+import sae_bench.sae_bench_utils.activation_collection as activation_collection
+import sae_bench.evals.ravel.mdbm as mdbm
+
 
 def custom_left_padding(
-    tokenizer: AutoTokenizer, input_ids: List[List[int]]
-) -> Int[torch.Tensor, "batch_size seq_len"]:
+    tokenizer: AutoTokenizer, input_ids: list[list[int]]
+) -> tuple[
+    Int[torch.Tensor, "batch_size seq_len"], Int[torch.Tensor, "batch_size seq_len"]
+]:
     """
     Left pad the input ids with the pad token.
     """

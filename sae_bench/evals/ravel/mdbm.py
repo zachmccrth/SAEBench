@@ -9,90 +9,6 @@ from sae_bench.evals.ravel.supervised_baseline import SupervisedBaseline
 import sae_bench.sae_bench_utils.activation_collection as activation_collection
 
 
-def get_layer_activations(
-    model: AutoModelForCausalLM,
-    target_layer: int,
-    inputs: BatchEncoding,
-    source_pos_B: torch.Tensor,
-) -> torch.Tensor:
-    acts_BLD = None
-
-    def gather_target_act_hook(module, inputs, outputs):
-        nonlocal acts_BLD
-        acts_BLD = outputs[0]
-        return outputs
-
-    handle = activation_collection.get_module(
-        model, target_layer
-    ).register_forward_hook(gather_target_act_hook)
-
-    _ = model(
-        input_ids=inputs["input_ids"].to(model.device),
-        attention_mask=inputs.get("attention_mask", None),
-    )
-
-    handle.remove()
-
-    assert acts_BLD is not None
-
-    acts_BD = acts_BLD[list(range(acts_BLD.shape[0])), source_pos_B, :]
-
-    return acts_BD
-
-
-def apply_binary_mask(
-    model: AutoModelForCausalLM,
-    target_layer: int,
-    inputs: BatchEncoding,
-    source_rep_BD: torch.Tensor,
-    binary_mask_F: torch.Tensor,
-    sae: sae_lens.SAE,
-    temperature: float,
-    base_pos_B: torch.Tensor,
-    training_mode: bool = False,
-) -> torch.Tensor:
-    acts_BLD = None
-
-    def intervention_hook(module, inputs, outputs):
-        if isinstance(outputs, tuple):
-            resid_BLD = outputs[0]
-            rest = outputs[1:]
-        else:
-            raise ValueError("Unexpected output shape")
-
-        source_act_BF = sae.encode(source_rep_BD)
-        resid_BD = resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :]
-        base_act_BF = sae.encode(resid_BD)
-
-        # Use true binary mask in eval mode, sigmoid in training mode
-        if not training_mode:
-            mask_values_F = (binary_mask_F > 0).to(dtype=binary_mask_F.dtype)
-        else:
-            mask_values_F = torch.sigmoid(binary_mask_F / temperature)
-
-        modified_act_BF = (
-            1 - mask_values_F
-        ) * base_act_BF + mask_values_F * source_act_BF
-        modified_resid_BD = sae.decode(modified_act_BF.to(dtype=model.dtype))
-
-        resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :] = modified_resid_BD
-
-        return (resid_BLD, *rest)
-
-    handle = activation_collection.get_module(
-        model, target_layer
-    ).register_forward_hook(intervention_hook)
-
-    outputs = model(
-        input_ids=inputs["input_ids"].to(model.device),
-        attention_mask=inputs.get("attention_mask", None),
-    )
-
-    handle.remove()
-
-    return outputs.logits
-
-
 class MDBM(nn.Module):
     def __init__(
         self,
@@ -115,6 +31,66 @@ class MDBM(nn.Module):
         self.device = model.device
         self.temperature: float = 1
 
+    def create_intervention_hook(
+        self,
+        source_rep_BD: torch.Tensor,
+        base_pos_B: torch.Tensor,
+        training_mode: bool = False,
+    ):
+        """
+        Creates and returns an intervention hook function that applies a binary mask
+        to modify activations.
+
+        Args:
+            source_rep_BD: Source representation tensor
+            binary_mask_F: Binary mask to apply
+            sae: Sparse autoencoder
+            temperature: Temperature for sigmoid in training mode
+            base_pos_B: Base positions tensor
+            training_mode: Whether to use sigmoid (training) or hard threshold (eval)
+            model_dtype: Data type of the model for proper conversion
+
+        Returns:
+            A hook function that can be registered with a PyTorch module
+        """
+
+        def intervention_hook(module, inputs, outputs):
+            if isinstance(outputs, tuple):
+                resid_BLD = outputs[0]
+                rest = outputs[1:]
+            else:
+                raise ValueError("Unexpected output shape")
+
+            if resid_BLD.shape[1] == 1:
+                # This means we are generating with the KV cache and the intervention has already been applied
+                return outputs
+
+            source_act_BF = self.sae.encode(source_rep_BD)
+            resid_BD = resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :]
+            base_act_BF = self.sae.encode(resid_BD)
+
+            # Use true binary mask in eval mode, sigmoid in training mode
+            if not training_mode:
+                mask_values_F = (self.binary_mask > 0).to(dtype=self.binary_mask.dtype)
+            else:
+                mask_values_F = torch.sigmoid(self.binary_mask / self.temperature)
+
+            modified_act_BF = (
+                1 - mask_values_F
+            ) * base_act_BF + mask_values_F * source_act_BF
+
+            modified_resid_BD = self.sae.decode(
+                modified_act_BF.to(dtype=source_rep_BD.dtype)
+            )
+
+            resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :] = (
+                modified_resid_BD
+            )
+
+            return (resid_BLD, *rest)
+
+        return intervention_hook
+
     def forward(
         self,
         base_encoding_BL,
@@ -125,21 +101,26 @@ class MDBM(nn.Module):
     ):
         with torch.no_grad():
             # Get source representation
-            source_rep = get_layer_activations(
+            source_rep_BD = activation_collection.get_layer_activations(
                 self.model, self.layer_intervened, source_encoding_BL, source_pos_B
             )
 
-        logits = apply_binary_mask(
-            self.model,
-            self.layer_intervened,
-            base_encoding_BL,
-            source_rep,
-            self.binary_mask,
-            self.sae,
-            self.temperature,
+        intervention_hook = self.create_intervention_hook(
+            source_rep_BD,
             base_pos_B,
             training_mode,
         )
+
+        handle = activation_collection.get_module(
+            self.model, self.layer_intervened
+        ).register_forward_hook(intervention_hook)
+
+        logits = self.model(
+            input_ids=base_encoding_BL["input_ids"].to(self.model.device),
+            attention_mask=base_encoding_BL.get("attention_mask", None),
+        ).logits
+
+        handle.remove()
 
         predicted = logits.argmax(dim=-1)
 
@@ -166,13 +147,13 @@ def compute_loss(intervened_logits_BLV, target_attr_B):
         Tuple of (loss, accuracy) where accuracy is the raw prediction accuracy
         for the final token
     """
-    cause_loss = F.cross_entropy(intervened_logits_BLV[:, -1, :], target_attr_B)
+    loss = F.cross_entropy(intervened_logits_BLV[:, -1, :], target_attr_B)
 
     # Calculate accuracy
     predictions = intervened_logits_BLV[:, -1, :].argmax(dim=-1)
     accuracy = (predictions == target_attr_B).float().mean()
 
-    return cause_loss, accuracy
+    return loss, accuracy
 
 
 def get_cause_isolation_scores(intervened_logits_BLV, source_pred_B, base_pred_B):
@@ -230,6 +211,8 @@ def get_validation_loss(mdbm: MDBM, val_loader: torch.utils.data.DataLoader):
                 source_pos_B,
                 base_pred_B,
                 source_pred_B,
+                base_text_str,
+                base_label_str,
             ) = batch
             intervened_logits_BLV, _ = mdbm(
                 base_encodings_BL, source_encodings_BL, base_pos_B, source_pos_B
@@ -272,7 +255,7 @@ def train_mdbm(
     val_loader,
     verbose: bool = False,
     train_mdas: bool = False,
-) -> dict[str, float]:
+) -> MDBM:
     initial_temperature = 1
     final_temperature = 1e-4
     temperature_schedule = torch.logspace(
@@ -337,6 +320,8 @@ def train_mdbm(
                 source_pos_B,
                 base_pred_B,
                 source_pred_B,
+                base_text_str,
+                base_label_str,
             ) = batch
 
             optimizer.zero_grad()
@@ -421,21 +406,4 @@ def train_mdbm(
     if verbose:
         print(f"Training complete. Best validation loss: {best_val_loss:.4f}")
 
-    (
-        final_val_loss,
-        final_val_accuracy,
-        final_val_cause_score,
-        final_val_isolation_score,
-    ) = get_validation_loss(mdbm, val_loader)
-
-    disentangle_score = (final_val_cause_score + final_val_isolation_score) / 2
-
-    results = {
-        "val_loss": final_val_loss,
-        "val_accuracy": final_val_accuracy,
-        "disentangle_score": disentangle_score,
-        "cause_score": final_val_cause_score,
-        "isolation_score": final_val_isolation_score,
-    }
-
-    return results
+    return mdbm

@@ -28,11 +28,6 @@ from sae_bench.evals.ravel.eval_config import RAVELEvalConfig
 from sae_bench.evals.ravel.generation import generate_batched
 
 
-# Set random seed for reproducibility
-eval_config = RAVELEvalConfig()
-rng = random.Random(eval_config.random_seed)
-
-
 @dataclass
 class AttributePrompt:
     """Represents an attribute_type with its associated prompt templates."""
@@ -272,7 +267,7 @@ class RAVELInstance:
             self.attribute_type_to_templates = json.load(f)
 
     def downsample_(self, n: int) -> None:
-        sampled_keys = rng.sample(list(range(len(self.prompts))), n)
+        sampled_keys = random.sample(list(range(len(self.prompts))), n)
         sampled_prompts = [self.prompts[k] for k in sampled_keys]
         self._filter_data_(sampled_prompts)
 

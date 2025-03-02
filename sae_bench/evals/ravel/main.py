@@ -42,6 +42,7 @@ from sae_bench.sae_bench_utils.sae_selection_utils import (
     get_saes_from_regex,
 )
 import sae_bench.sae_bench_utils.activation_collection as activation_collection
+import sae_bench.evals.ravel.intervention as intervention
 
 LLM_NAME_MAP = {"gemma-2-2b": "google/gemma-2-2b"}
 
@@ -51,9 +52,9 @@ def create_dataloaders(
     cause_source_prompts,
     iso_base_prompts,
     iso_source_prompts,
-    model,
-    eval_config,
-    train_test_split,
+    model: AutoModelForCausalLM,
+    eval_config: RAVELEvalConfig,
+    train_test_split: float,
 ):
     """
     Create train and validation dataloaders from prompt pairs.
@@ -69,49 +70,39 @@ def create_dataloaders(
         train_loader: Dataloader for training
         val_loader: Dataloader for validation
     """
+    # NOTE: Pay very close attention to the order of the arguments here and the difference between cause and iso
+    # This determines the labels that are used for cause and iso
     formatted_cause_pairs = []
     for base, source in zip(cause_base_prompts, cause_source_prompts):
-        base_tokens_L = base.input_ids
-        base_attn_mask_L = base.attention_mask
-        base_pos = base.final_entity_token_pos
-        base_pred = base.first_generated_token_id
-        source_tokens_L = source.input_ids
-        source_attn_mask_L = source.attention_mask
-        source_pos = source.final_entity_token_pos
-        source_pred = source.first_generated_token_id
         formatted_cause_pairs.append(
             (
-                base_tokens_L,
-                source_tokens_L,
-                base_attn_mask_L,
-                source_attn_mask_L,
-                base_pos,
-                source_pos,
-                base_pred,
-                source_pred,
+                base.input_ids,
+                source.input_ids,
+                base.attention_mask,
+                source.attention_mask,
+                base.final_entity_token_pos,
+                source.final_entity_token_pos,
+                base.first_generated_token_id,
+                source.first_generated_token_id,
+                base.text,
+                source.attribute_label,  # NOTE: We want to change the label to source for cause
             )
         )
 
     formatted_iso_pairs = []
     for base, source in zip(iso_base_prompts, iso_source_prompts):
-        base_tokens_L = base.input_ids
-        base_attn_mask_L = base.attention_mask
-        base_pos = base.final_entity_token_pos
-        base_pred = base.first_generated_token_id
-        source_tokens_L = source.input_ids
-        source_attn_mask_L = source.attention_mask
-        source_pos = source.final_entity_token_pos
-        source_pred = source.first_generated_token_id
         formatted_iso_pairs.append(
             (
-                base_tokens_L,
-                source_tokens_L,
-                base_attn_mask_L,
-                source_attn_mask_L,
-                base_pos,
-                source_pos,
-                base_pred,
-                base_pred,  # This is the only difference for iso pairs - we don't want this to change
+                base.input_ids,
+                source.input_ids,
+                base.attention_mask,
+                source.attention_mask,
+                base.final_entity_token_pos,
+                source.final_entity_token_pos,
+                base.first_generated_token_id,
+                base.first_generated_token_id,  # NOTE: We want the label to remain as base for iso
+                base.text,
+                base.attribute_label,
             )
         )
 
@@ -166,6 +157,8 @@ def create_dataloader_from_pairs(formatted_pairs, model, eval_config):
         source_pos_B = []
         base_pred_B = []
         source_pred_B = []
+        base_text_str = []
+        base_label_str = []
 
         for (
             base_tokens_L,
@@ -176,6 +169,8 @@ def create_dataloader_from_pairs(formatted_pairs, model, eval_config):
             source_pos,
             base_pred,
             source_pred,
+            base_text,
+            base_label,
         ) in batch_data:
             base_tokens_BL.append(base_tokens_L)
             source_tokens_BL.append(source_tokens_L)
@@ -185,6 +180,8 @@ def create_dataloader_from_pairs(formatted_pairs, model, eval_config):
             source_pos_B.append(source_pos)
             base_pred_B.append(base_pred)
             source_pred_B.append(source_pred)
+            base_text_str.append(base_text)
+            base_label_str.append(base_label)
 
         base_tokens_BL, base_attn_mask_BL = custom_left_padding(
             tokenizer, base_tokens_BL
@@ -224,6 +221,8 @@ def create_dataloader_from_pairs(formatted_pairs, model, eval_config):
                 source_pos_B,
                 base_pred_B,
                 source_pred_B,
+                base_text_str,
+                base_label_str,
             )
         )
 
@@ -283,7 +282,7 @@ def run_eval_single_cause_attribute(
         train_test_split=config.train_test_split,
     )
 
-    mdbm_results = mdbm.train_mdbm(
+    trained_mdbm = mdbm.train_mdbm(
         model,
         tokenizer,
         config,
@@ -293,7 +292,19 @@ def run_eval_single_cause_attribute(
         verbose=True,
     )
 
-    return mdbm_results
+    iso_score, cause_score = intervention.generate_batched_interventions(
+        model,
+        trained_mdbm,
+        tokenizer,
+        val_loader,
+        max_new_tokens=config.n_generated_tokens,
+    )
+
+    return {
+        "cause_score": cause_score,
+        "isolation_score": iso_score,
+        "disentangle_score": (cause_score + iso_score) / 2,
+    }
 
 
 def run_eval_single_dataset(
@@ -316,6 +327,9 @@ def run_eval_single_dataset(
     filtered_dataset_path = os.path.join(config.artifact_dir, filtered_dataset_filename)
 
     if not os.path.exists(filtered_dataset_path):
+        orig_batch_size = config.llm_batch_size
+        # Generations use much less memory than training the MDBM
+        config.llm_batch_size = orig_batch_size * 5
         full_dataset = RAVELInstance.create_from_files(
             config=config,
             entity_type=entity_class,
@@ -326,6 +340,7 @@ def run_eval_single_dataset(
             attribute_types=config.entity_attribute_selection[entity_class],
             downsample=config.full_dataset_downsample,
         )
+        config.llm_batch_size = orig_batch_size
 
         # Create filtered dataset.
         filtered_dataset = full_dataset.create_and_save_filtered_dataset(
@@ -353,6 +368,8 @@ def run_eval_single_dataset(
             sae,
             model,
         )
+
+        print(mdbm_results)
 
         results_dict["cause_score"].append(mdbm_results["cause_score"])
         results_dict["isolation_score"].append(mdbm_results["isolation_score"])
@@ -515,9 +532,11 @@ def create_config_and_selected_saes(
     if args.llm_batch_size is not None:
         config.llm_batch_size = args.llm_batch_size
     else:
-        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[
-            config.model_name
-        ]
+        # ctx len here is usually around 32, so we can use a larger batch size
+        # However, we do have backward passes for training the MDBM
+        config.llm_batch_size = (
+            activation_collection.LLM_NAME_TO_BATCH_SIZE[config.model_name] * 2
+        )
 
     if args.llm_dtype is not None:
         config.llm_dtype = args.llm_dtype

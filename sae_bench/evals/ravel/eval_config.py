@@ -27,7 +27,7 @@ class RAVELEvalConfig(BaseEvalConfig):
         title="Number of distinct templates in the dataset",
         description="Number of templates in the dataset, filtered by prediction accuracy over entities.",
     )
-    full_dataset_downsample: int = Field(
+    full_dataset_downsample: int | None = Field(
         default=None,
         title="Full Dataset Downsample",
         description="Downsample the full dataset to this size.",
@@ -96,7 +96,7 @@ class RAVELEvalConfig(BaseEvalConfig):
     )
 
     if DEBUG_MODE:
-        n_samples_per_attribute_class = 500
+        num_pairs_per_attribute = 500
         top_n_entities = 500
         top_n_templates = 90
 
