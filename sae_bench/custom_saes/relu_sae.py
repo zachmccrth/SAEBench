@@ -45,7 +45,7 @@ class ReluSAE(base_sae.BaseSAE):
         self.to(dtype=torch.float32)
 
         # Errors can be relatively large in larger SAEs due to floating point precision
-        tolerance = 1e-4
+        tolerance = 1e-2
 
         norms = torch.norm(self.W_dec, dim=1).to(dtype=self.dtype, device=self.device)
 

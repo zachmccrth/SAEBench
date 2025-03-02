@@ -8,7 +8,7 @@ from jaxtyping import Bool, Float, Int, jaxtyped
 from sae_lens import SAE
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 # Relevant at ctx len 128
 LLM_NAME_TO_BATCH_SIZE = {
@@ -30,7 +30,15 @@ LLM_NAME_TO_DTYPE = {
 }
 
 
-# beartype struggles with the tokenizer
+def get_module(model: AutoModelForCausalLM, layer_num: int) -> torch.nn.Module:
+    if model.config.architectures[0] == "Gemma2ForCausalLM":
+        return model.model.layers[layer_num]
+    else:
+        raise ValueError(
+            f"Model {model.config.architectures[0]} not supported, please add the appropriate module"
+        )
+
+
 @jaxtyped(typechecker=beartype)
 @torch.no_grad
 def get_bos_pad_eos_mask(

@@ -4,7 +4,10 @@ from typing import Optional, Union, List
 import torch
 from transformers import AutoTokenizer, BatchEncoding, AutoModelForCausalLM
 
-def custom_left_padding(tokenizer: AutoTokenizer, input_ids: List[List[int]]) -> Int[torch.Tensor, "batch_size seq_len"]:
+
+def custom_left_padding(
+    tokenizer: AutoTokenizer, input_ids: List[List[int]]
+) -> Int[torch.Tensor, "batch_size seq_len"]:
     """
     Left pad the input ids with the pad token.
     """
@@ -20,6 +23,7 @@ def custom_left_padding(tokenizer: AutoTokenizer, input_ids: List[List[int]]) ->
     attention_mask = (padded_input_ids != pad_token_id).long()
     return padded_input_ids, attention_mask
 
+
 def generate_batched(
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
@@ -28,10 +32,10 @@ def generate_batched(
     max_new_tokens: int = 8,
     llm_batch_size: int = 32,
     return_first_generated_token: bool = False,
-):  
+):
     """
     Generate completions for a batch of prompts.
-    You can either pass 
+    You can either pass
     1. a tokenized and padded input ids + attention masks as torch tensors
     2. a list of lists of tokenized input ids without padding
     """
@@ -44,7 +48,9 @@ def generate_batched(
     ):
         # Draw batch from input_ids_BL
         if isinstance(input_ids_BL, torch.Tensor):
-            assert attention_mask_BL is not None, "If input_ids_BL is a torch tensor, attention_mask_BL must also be provided."
+            assert attention_mask_BL is not None, (
+                "If input_ids_BL is a torch tensor, attention_mask_BL must also be provided."
+            )
             input_ids = input_ids_BL[batch_begin : batch_begin + llm_batch_size].to(
                 model.device
             )
@@ -52,7 +58,9 @@ def generate_batched(
                 batch_begin : batch_begin + llm_batch_size
             ].to(model.device)
         else:
-            input_ids, attention_mask = custom_left_padding(tokenizer, input_ids_BL[batch_begin : batch_begin + llm_batch_size])
+            input_ids, attention_mask = custom_left_padding(
+                tokenizer, input_ids_BL[batch_begin : batch_begin + llm_batch_size]
+            )
             input_ids = input_ids.to(model.device)
             attention_mask = attention_mask.to(model.device)
 

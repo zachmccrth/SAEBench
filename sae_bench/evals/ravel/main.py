@@ -18,7 +18,11 @@ import random
 
 import sae_bench.evals.ravel.mdbm as mdbm
 from sae_bench.evals.ravel.eval_config import RAVELEvalConfig
-from sae_bench.evals.ravel.instance import RAVELInstance, RAVELFilteredDataset
+from sae_bench.evals.ravel.instance import (
+    RAVELInstance,
+    RAVELFilteredDataset,
+    get_instance_name,
+)
 from sae_bench.evals.ravel.intervention import get_prompt_pairs
 from sae_bench.evals.ravel.eval_output import (
     RAVELMetricCategories,
@@ -26,7 +30,7 @@ from sae_bench.evals.ravel.eval_output import (
     RAVELEvalOutput,
     EVAL_TYPE_ID_RAVEL,
 )
-
+from sae_bench.evals.ravel.generation import custom_left_padding
 
 import sae_bench.sae_bench_utils.general_utils as general_utils
 from sae_bench.sae_bench_utils import (
@@ -147,6 +151,8 @@ def create_dataloader_from_pairs(formatted_pairs, model, eval_config):
     dataloader = []
     num_batches = len(formatted_pairs) // eval_config.llm_batch_size
 
+    tokenizer = AutoTokenizer.from_pretrained(eval_config.model_name)
+
     for batch_idx in range(num_batches):
         batch_start = batch_idx * eval_config.llm_batch_size
         batch_end = batch_start + eval_config.llm_batch_size
@@ -180,10 +186,18 @@ def create_dataloader_from_pairs(formatted_pairs, model, eval_config):
             base_pred_B.append(base_pred)
             source_pred_B.append(source_pred)
 
-        base_tokens_BL = torch.stack(base_tokens_BL).to(model.device)
-        source_tokens_BL = torch.stack(source_tokens_BL).to(model.device)
-        base_attn_mask_BL = torch.stack(base_attn_mask_BL).to(model.device)
-        source_attn_mask_BL = torch.stack(source_attn_mask_BL).to(model.device)
+        base_tokens_BL, base_attn_mask_BL = custom_left_padding(
+            tokenizer, base_tokens_BL
+        )
+        source_tokens_BL, source_attn_mask_BL = custom_left_padding(
+            tokenizer, source_tokens_BL
+        )
+
+        base_tokens_BL = base_tokens_BL.to(model.device)
+        base_attn_mask_BL = base_attn_mask_BL.to(model.device)
+        source_tokens_BL = source_tokens_BL.to(model.device)
+        source_attn_mask_BL = source_attn_mask_BL.to(model.device)
+
         base_pos_B = torch.tensor(base_pos_B).to(model.device)
         source_pos_B = torch.tensor(source_pos_B).to(model.device)
         base_pred_B = torch.tensor(base_pred_B).to(model.device)
@@ -291,31 +305,38 @@ def run_eval_single_dataset(
     """config: eval_config.EvalConfig contains all hyperparameters to reproduce the evaluation.
     It is saved in the results_dict for reproducibility."""
 
-    ##########################
-    # TODO: Replace this with loading artifacts from huggingface / disk, once the full dataset is pre-computed.
     tokenizer = AutoTokenizer.from_pretrained(config.model_name)
-    full_dataset = RAVELInstance.create_from_files(
-        entity_type=entity_class,
-        tokenizer=tokenizer,
-        data_dir=config.artifact_dir,
-        model=model,
-        model_name=config.model_name,
-        downsample=config.full_dataset_downsample,
-    )
 
-    # Create filtered dataset.
-    filtered_dataset = full_dataset.create_and_save_filtered_dataset(
-        artifact_dir=config.artifact_dir,
-        top_n_entities=config.top_n_entities,
+    filtered_dataset_filename = get_instance_name(
+        entity_class,
+        config.model_name,
+        config.full_dataset_downsample,
+        config.top_n_entities,
     )
+    filtered_dataset_path = os.path.join(config.artifact_dir, filtered_dataset_filename)
+
+    if not os.path.exists(filtered_dataset_path):
+        full_dataset = RAVELInstance.create_from_files(
+            config=config,
+            entity_type=entity_class,
+            tokenizer=tokenizer,
+            data_dir=config.artifact_dir,
+            model=model,
+            model_name=config.model_name,
+            attribute_types=config.entity_attribute_selection[entity_class],
+            downsample=config.full_dataset_downsample,
+        )
+
+        # Create filtered dataset.
+        filtered_dataset = full_dataset.create_and_save_filtered_dataset(
+            artifact_dir=config.artifact_dir,
+            top_n_entities=config.top_n_entities,
+        )
 
     # Test loading the filtered dataset.
-    filtered_dataset_filename = filtered_dataset.config["instance_name"] + "_filtered_dataset.json"
-    filtered_dataset_path = os.path.join(config.artifact_dir, filtered_dataset_filename)
     dataset = RAVELFilteredDataset.load(filtered_dataset_path)
     ##########################
-    
-    
+
     attributes = config.entity_attribute_selection[entity_class]
 
     results_dict = {"cause_score": [], "isolation_score": [], "disentangle_score": []}

@@ -3,7 +3,7 @@ from pydantic import Field
 from sae_bench.evals.base_eval_output import BaseEvalConfig
 from typing import List
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 @dataclass
@@ -17,33 +17,28 @@ class RAVELEvalConfig(BaseEvalConfig):
         title="Selection of entity and attribute classes",
         description="Subset of the RAVEL datset to be evaluated. Each key is an entity class, and the value is a list of at least two attribute classes.",
     )
-    n_samples_per_attribute_class: int = Field(
-        default=1000,
-        title="Number of Samples per Attribute Class",
-        description="Number of samples per attribute class. If None, all samples are used.",
-    )
     top_n_entities: int = Field(
         default=500,
         title="Number of distinct entities in the dataset",
         description="Number of entities in the dataset, filtered by prediction accuracy over attributes / templates.",
     )
     top_n_templates: int = Field(
-        default=500,
+        default=90,
         title="Number of distinct templates in the dataset",
         description="Number of templates in the dataset, filtered by prediction accuracy over entities.",
     )
     full_dataset_downsample: int = Field(
-        default=101,
+        default=None,
         title="Full Dataset Downsample",
         description="Downsample the full dataset to this size.",
     )
     num_pairs_per_attribute: int = Field(
-        default=500,
+        default=5000,
         title="Number of Pairs per Attribute",
         description="Number of pairs per attribute",
     )
     train_test_split: float = Field(
-        default=0.5,
+        default=0.7,
         title="Train Test Split",
         description="Fraction of dataset to use for training.",
     )
@@ -59,11 +54,6 @@ class RAVELEvalConfig(BaseEvalConfig):
         title="Model Name",
         description="Model name",
     )
-    model_dir: str = Field(
-        default="None",
-        title="Model Directory",
-        description="Model directory for cached hf model",
-    )
     llm_dtype: str = Field(
         default="bfloat16",
         title="LLM Data Type",
@@ -74,17 +64,6 @@ class RAVELEvalConfig(BaseEvalConfig):
         title="LLM Batch Size",
         description="LLM batch size, inference only",
     )
-    sae_batch_size: int = Field(
-        default=125,
-        title="SAE Batch Size",
-        description="SAE batch size, inference only",
-    )
-
-    max_samples_per_attribute: int = Field(
-        default=1024,
-        title="Max Samples per Attribute",
-        description="Indirect definition of probe training datset size, which contains half target attribute and half balanced mix of non-target attributes.",
-    )
 
     learning_rate: float = Field(
         default=1e-3,
@@ -92,26 +71,16 @@ class RAVELEvalConfig(BaseEvalConfig):
         description="Learning rate for the MDBM",
     )
     num_epochs: int = Field(
-        default=5,
+        default=2,
         title="Number of Epochs",
         description="Number of training epochs",
     )
 
     # Intervention
-    n_interventions: int = Field(
-        default=128,
-        title="Number of Interventions",
-        description="Number of interventions per attribute feature threshold, ie. number of experiments to compute a single cause / isolation score.",
-    )
     n_generated_tokens: int = Field(
         default=6,
         title="Number of Generated Tokens",
         description="Number of tokens to generate for each intervention. 8 was used in the RAVEL paper",
-    )
-    inv_batch_size: int = Field(
-        default=16,
-        title="Intervention Batch Size",
-        description="Intervention batch size, inference only",
     )
 
     # Misc
@@ -129,7 +98,6 @@ class RAVELEvalConfig(BaseEvalConfig):
     if DEBUG_MODE:
         n_samples_per_attribute_class = 500
         top_n_entities = 500
-        top_n_templates = 500
+        top_n_templates = 90
 
-        n_interventions = 500
         llm_batch_size = 10

@@ -6,6 +6,7 @@ from transformers import AutoModelForCausalLM, BatchEncoding, AutoTokenizer
 
 from sae_bench.evals.ravel.eval_config import RAVELEvalConfig
 from sae_bench.evals.ravel.supervised_baseline import SupervisedBaseline
+import sae_bench.sae_bench_utils.activation_collection as activation_collection
 
 
 def get_layer_activations(
@@ -21,9 +22,9 @@ def get_layer_activations(
         acts_BLD = outputs[0]
         return outputs
 
-    handle = model.model.layers[target_layer].register_forward_hook(
-        gather_target_act_hook
-    )
+    handle = activation_collection.get_module(
+        model, target_layer
+    ).register_forward_hook(gather_target_act_hook)
 
     _ = model(
         input_ids=inputs["input_ids"].to(model.device),
@@ -72,13 +73,15 @@ def apply_binary_mask(
         modified_act_BF = (
             1 - mask_values_F
         ) * base_act_BF + mask_values_F * source_act_BF
-        modified_resid_BD = sae.decode(modified_act_BF)
+        modified_resid_BD = sae.decode(modified_act_BF.to(dtype=model.dtype))
 
         resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :] = modified_resid_BD
 
         return (resid_BLD, *rest)
 
-    handle = model.model.layers[target_layer].register_forward_hook(intervention_hook)
+    handle = activation_collection.get_module(
+        model, target_layer
+    ).register_forward_hook(intervention_hook)
 
     outputs = model(
         input_ids=inputs["input_ids"].to(model.device),
@@ -105,12 +108,12 @@ class MDBM(nn.Module):
         self.sae = sae
         self.layer_intervened = sae.cfg.hook_layer
         self.binary_mask = torch.nn.Parameter(
-            torch.zeros(sae.cfg.d_sae, device=model.device, dtype=model.dtype),
+            torch.zeros(sae.cfg.d_sae, device=model.device, dtype=torch.float32),
             requires_grad=True,
         )
         self.batch_size = config.llm_batch_size
         self.device = model.device
-        self.temperature: float = 1e-2
+        self.temperature: float = 1
 
     def forward(
         self,
@@ -154,6 +157,11 @@ def compute_loss(intervened_logits_BLV, target_attr_B):
     - Cause loss: Target attribute should match source
     - Iso loss: Other attributes should match base
 
+    NOTE: For cause loss, target_attr_B is the source attribute value.
+    For iso loss, target_attr_B is the base attribute value.
+    This is set during dataset creation, so we can just use cross entropy loss with target_attr_B
+    for both cause and iso loss.
+
     Returns:
         Tuple of (loss, accuracy) where accuracy is the raw prediction accuracy
         for the final token
@@ -165,13 +173,6 @@ def compute_loss(intervened_logits_BLV, target_attr_B):
     accuracy = (predictions == target_attr_B).float().mean()
 
     return cause_loss, accuracy
-
-    # iso_losses = []
-    # for attr in other_attrs:
-    #     iso_losses.append(F.cross_entropy(base_outputs, attr))
-    # iso_loss = torch.stack(iso_losses).mean()
-
-    # return cause_loss + iso_loss
 
 
 def get_cause_isolation_scores(intervened_logits_BLV, source_pred_B, base_pred_B):
@@ -270,32 +271,38 @@ def train_mdbm(
     train_loader,
     val_loader,
     verbose: bool = False,
+    train_mdas: bool = False,
 ) -> dict[str, float]:
-    initial_temperature = 1e-2
-    final_temperature = 1e-7
+    initial_temperature = 1
+    final_temperature = 1e-4
     temperature_schedule = torch.logspace(
         torch.log10(torch.tensor(initial_temperature)),
         torch.log10(torch.tensor(final_temperature)),
-        config.num_epochs,
+        config.num_epochs * len(train_loader),
         device=model.device,
         dtype=model.dtype,
     )
 
-    mdbm = MDBM(
-        model,
-        tokenizer,
-        config,
-        sae,
-    ).to(model.device)
-
-    # mdbm = SupervisedBaseline(
-    #     model,
-    #     tokenizer,
-    #     config,
-    #     sae,
-    # ).to(model.device)
-
-    optimizer = torch.optim.Adam([mdbm.binary_mask], lr=config.learning_rate)
+    if train_mdas:
+        mdbm = SupervisedBaseline(
+            model,
+            tokenizer,
+            config,
+            sae,
+        ).to(model.device)
+        optimizer = torch.optim.Adam(
+            [mdbm.binary_mask, mdbm.transform_matrix], lr=config.learning_rate
+        )
+        orthonormal = True
+    else:
+        mdbm = MDBM(
+            model,
+            tokenizer,
+            config,
+            sae,
+        ).to(model.device)
+        optimizer = torch.optim.Adam([mdbm.binary_mask], lr=config.learning_rate)
+        orthonormal = False
 
     if verbose:
         # Get initial validation loss
@@ -313,13 +320,16 @@ def train_mdbm(
     patience_counter = 0
 
     for epoch in range(config.num_epochs):
-        mdbm.temperature = temperature_schedule[epoch].item()
         mdbm.train()
         train_loss = 0
         train_accuracy = 0
         batch_count = 0
+        log_count = 0
 
         for batch in train_loader:
+            mdbm.temperature = temperature_schedule[
+                epoch * len(train_loader) + batch_count
+            ].item()
             (
                 base_encodings_BL,
                 source_encodings_BL,
@@ -344,10 +354,30 @@ def train_mdbm(
 
             loss.backward()
             optimizer.step()
+            if train_mdas and orthonormal:
+                with torch.no_grad():
+                    Q, R = torch.linalg.qr(mdbm.transform_matrix, mode="reduced")
+                    # Correct sign to enforce det=+1 for rotation matrices
+                    det = torch.det(Q)
+                    if det < 0:
+                        # Flip the sign of one column to make det=+1
+                        Q[:, 0] = -Q[:, 0]
+                    mdbm.transform_matrix[...] = Q
 
             train_loss += loss.item()
             train_accuracy += accuracy.item()
             batch_count += 1
+            log_count += 1
+
+            if log_count % 20 == 0 and verbose:
+                print(
+                    f"Epoch {epoch + 1}/{config.num_epochs} - "
+                    f"Train Loss: {train_loss / log_count:.4f}, "
+                    f"Train Accuracy: {train_accuracy / log_count:.4f}"
+                )
+                train_loss = 0
+                train_accuracy = 0
+                log_count = 0
 
         avg_train_loss = train_loss / batch_count if batch_count > 0 else 0
         avg_train_accuracy = train_accuracy / batch_count if batch_count > 0 else 0

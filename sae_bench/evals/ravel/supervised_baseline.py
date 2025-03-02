@@ -4,6 +4,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BatchEncoding
 import sae_lens
 
 from sae_bench.evals.ravel.eval_config import RAVELEvalConfig
+import sae_bench.sae_bench_utils.activation_collection as activation_collection
 
 
 def get_layer_activations(
@@ -19,9 +20,9 @@ def get_layer_activations(
         acts_BLD = outputs[0]
         return outputs
 
-    handle = model.model.layers[target_layer].register_forward_hook(
-        gather_target_act_hook
-    )
+    handle = activation_collection.get_module(
+        model, target_layer
+    ).register_forward_hook(gather_target_act_hook)
 
     _ = model(
         input_ids=inputs["input_ids"].to(model.device),
@@ -43,6 +44,7 @@ def apply_transformation_matrix(
     inputs: BatchEncoding,
     source_rep_BD: torch.Tensor,
     transform_matrix_DD: torch.Tensor,  # Square matrix for transformation
+    binary_mask_D: torch.Tensor,
     sae: sae_lens.SAE,  # Kept for API compatibility
     temperature: float,  # Kept for API compatibility
     base_pos_B: torch.Tensor,
@@ -62,14 +64,39 @@ def apply_transformation_matrix(
 
         # Apply the transformation matrix directly to the source representation
         # This gives us much more flexibility than the binary mask
-        modified_resid_BD = torch.matmul(source_rep_BD, transform_matrix_DD)
+        rotated_source_BD = torch.matmul(
+            source_rep_BD.to(dtype=torch.float32), transform_matrix_DD
+        )
+        rotated_resid_BD = torch.matmul(
+            resid_BD.to(dtype=torch.float32), transform_matrix_DD
+        )
+
+        # Use true binary mask in eval mode, sigmoid in training mode
+        if not training_mode:
+            mask_values_D = (binary_mask_D > 0).to(dtype=binary_mask_D.dtype)
+        else:
+            mask_values_D = torch.sigmoid(binary_mask_D / temperature)
+
+        # use this to hardcode the mask
+        # mask_values_D = torch.zeros_like(binary_mask_D)
+        # mask_values_D[:50] = 1
+
+        modified_resid_BD = (
+            1 - mask_values_D
+        ) * rotated_resid_BD + mask_values_D * rotated_source_BD
+
+        modified_resid_BD = torch.matmul(modified_resid_BD, transform_matrix_DD.T)
 
         # Replace the base activations with the transformed source activations
-        resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :] = modified_resid_BD
+        resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :] = (
+            modified_resid_BD.to(dtype=resid_BLD.dtype)
+        )
 
         return (resid_BLD, *rest)
 
-    handle = model.model.layers[target_layer].register_forward_hook(intervention_hook)
+    handle = activation_collection.get_module(
+        model, target_layer
+    ).register_forward_hook(intervention_hook)
 
     outputs = model(
         input_ids=inputs["input_ids"].to(model.device),
@@ -111,8 +138,12 @@ class SupervisedBaseline(nn.Module):
         # )
 
         # Add identity initialization option (can be uncommented if needed)
+        self.transform_matrix = torch.nn.Parameter(
+            torch.eye(hidden_dim, device=model.device, dtype=torch.float32),
+            requires_grad=True,
+        )
         self.binary_mask = torch.nn.Parameter(
-            torch.eye(hidden_dim, device=model.device, dtype=model.dtype),
+            torch.zeros(hidden_dim, device=model.device, dtype=torch.float32),
             requires_grad=True,
         )
 
@@ -139,6 +170,7 @@ class SupervisedBaseline(nn.Module):
             self.layer_intervened,
             base_encoding_BL,
             source_rep,
+            self.transform_matrix,
             self.binary_mask,
             self.sae,  # Passed for API compatibility
             self.temperature,  # Passed for API compatibility
