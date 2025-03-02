@@ -75,6 +75,7 @@ def get_prompt_pairs(
     return base_prompts[:min_length], source_prompts[:min_length]
 
 
+@torch.no_grad()
 def generate_batched_interventions(
     model: AutoModelForCausalLM,
     mdbm: mdbm.MDBM,

@@ -191,6 +191,7 @@ def get_cause_isolation_scores(intervened_logits_BLV, source_pred_B, base_pred_B
     return cause_score, isolation_score, cause_count, isolation_count
 
 
+@torch.no_grad()
 def get_validation_loss(mdbm: MDBM, val_loader: torch.utils.data.DataLoader):
     """Compute validation loss across the validation dataset"""
     mdbm.eval()

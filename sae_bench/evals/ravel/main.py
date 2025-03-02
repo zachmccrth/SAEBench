@@ -293,6 +293,9 @@ def run_eval_single_cause_attribute(
         train_mdas=config.train_mdas,
     )
 
+    torch.cuda.empty_cache()
+    gc.collect()
+
     iso_score, cause_score = intervention.generate_batched_interventions(
         model,
         trained_mdbm,
@@ -300,6 +303,9 @@ def run_eval_single_cause_attribute(
         val_loader,
         max_new_tokens=config.n_generated_tokens,
     )
+
+    torch.cuda.empty_cache()
+    gc.collect()
 
     return {
         "cause_score": cause_score,
