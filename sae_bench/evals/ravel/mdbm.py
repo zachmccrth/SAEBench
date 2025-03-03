@@ -65,9 +65,10 @@ class MDBM(nn.Module):
                 # This means we are generating with the KV cache and the intervention has already been applied
                 return outputs
 
-            source_act_BF = self.sae.encode(source_rep_BD)
-            resid_BD = resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :]
-            base_act_BF = self.sae.encode(resid_BD)
+            with torch.no_grad():
+                source_act_BF = self.sae.encode(source_rep_BD)
+                resid_BD = resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :]
+                base_act_BF = self.sae.encode(resid_BD)
 
             # Use true binary mask in eval mode, sigmoid in training mode
             if not training_mode:

@@ -39,6 +39,7 @@ def get_module(model: AutoModelForCausalLM, layer_num: int) -> torch.nn.Module:
         )
 
 
+@torch.no_grad()
 def get_layer_activations(
     model: AutoModelForCausalLM,
     target_layer: int,

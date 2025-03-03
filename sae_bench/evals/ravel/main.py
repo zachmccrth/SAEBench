@@ -282,6 +282,9 @@ def run_eval_single_cause_attribute(
         train_test_split=config.train_test_split,
     )
 
+    torch.cuda.empty_cache()
+    gc.collect()
+
     trained_mdbm = mdbm.train_mdbm(
         model,
         tokenizer,
