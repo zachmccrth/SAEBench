@@ -36,6 +36,7 @@ class MDBM(nn.Module):
         source_rep_BD: torch.Tensor,
         base_pos_B: torch.Tensor,
         training_mode: bool = False,
+        add_error: bool = False,
     ):
         """
         Creates and returns an intervention hook function that applies a binary mask
@@ -43,12 +44,9 @@ class MDBM(nn.Module):
 
         Args:
             source_rep_BD: Source representation tensor
-            binary_mask_F: Binary mask to apply
-            sae: Sparse autoencoder
-            temperature: Temperature for sigmoid in training mode
             base_pos_B: Base positions tensor
             training_mode: Whether to use sigmoid (training) or hard threshold (eval)
-            model_dtype: Data type of the model for proper conversion
+            add_error: Whether to add error to the modified activations - we default to False, as it typically degrades performance
 
         Returns:
             A hook function that can be registered with a PyTorch module
@@ -83,6 +81,10 @@ class MDBM(nn.Module):
             modified_resid_BD = self.sae.decode(
                 modified_act_BF.to(dtype=source_rep_BD.dtype)
             )
+
+            if add_error:
+                error_BD = resid_BD - self.sae.decode(base_act_BF)
+                modified_resid_BD = modified_resid_BD + error_BD
 
             resid_BLD[list(range(resid_BLD.shape[0])), base_pos_B, :] = (
                 modified_resid_BD
