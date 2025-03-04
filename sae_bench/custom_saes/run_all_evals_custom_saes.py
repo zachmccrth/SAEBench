@@ -215,6 +215,7 @@ def run_evals(
 
 if __name__ == "__main__":
     import sae_bench.custom_saes.identity_sae as identity_sae
+    import sae_bench.custom_saes.pca_sae as pca_sae
 
     device = general_utils.setup_environment()
 
@@ -272,8 +273,14 @@ if __name__ == "__main__":
         selected_saes = [(f"{model_name}_layer_{hook_layer}_identity_sae", sae)]
 
         # This will evaluate PCA SAEs
-        # sae = pca_sae.PCASAE(model_name, d_model, hook_layer, context_size=128)
-        # filename = f"gemma-2-2b-pca-sae/pca_gemma-2-2b_blocks.{hook_layer}.hook_resid_post.pt"
+        # sae = pca_sae.PCASAE(
+        #     d_model,
+        #     model_name,
+        #     hook_layer,
+        #     device=torch.device(device),
+        #     dtype=general_utils.str_to_dtype(llm_dtype),
+        # )
+        # filename = f"pca_gemma-2-2b_blocks.{hook_layer}.hook_resid_post.pt"
         # sae.load_from_file(filename)
         # selected_saes = [(f"{model_name}_layer_{hook_layer}_pca_sae", sae)]
 
