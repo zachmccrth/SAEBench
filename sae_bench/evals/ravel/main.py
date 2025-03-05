@@ -544,9 +544,9 @@ def create_config_and_selected_saes(
     else:
         # ctx len here is usually around 32, so we can use a larger batch size
         # However, we do have backward passes for training the MDBM
-        config.llm_batch_size = (
-            activation_collection.LLM_NAME_TO_BATCH_SIZE[config.model_name] * 2
-        )
+        config.llm_batch_size = activation_collection.LLM_NAME_TO_BATCH_SIZE[
+            config.model_name
+        ]
 
     if args.llm_dtype is not None:
         config.llm_dtype = args.llm_dtype
