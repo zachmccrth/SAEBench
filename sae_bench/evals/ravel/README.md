@@ -21,3 +21,9 @@ The scoring consists of three steps:
 1. Implement DAS for neurons
     - What hyperparameters does DAS have? How do the RAVEL papers choose?
 2. Check cosine sim of SAE features with
+
+## Debugging Notes
+
+- In one case, on a single 3090 GPU, I encountered this error: `RuntimeError: CUDA driver error: invalid argument`.
+
+I found that switching to torch 2.5.0 instead of 2.6.0 fixed the issue.
