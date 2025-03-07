@@ -238,6 +238,12 @@ def run_evals(
                     "explained_variance": sparsity_variance_metrics[
                         "explained_variance"
                     ],
+                    "total_sum_of_squares": sparsity_variance_metrics[
+                        "total_sum_of_squares"
+                    ],
+                    "resid_sum_of_squares": sparsity_variance_metrics[
+                        "resid_sum_of_squares"
+                    ],
                     "mse": sparsity_variance_metrics["mse"],
                     "cossim": sparsity_variance_metrics["cossim"],
                 }
@@ -463,6 +469,8 @@ def get_sparsity_and_variance_metrics(
         metric_dict["explained_variance"] = []
         metric_dict["mse"] = []
         metric_dict["cossim"] = []
+        metric_dict["total_sum_of_squares"] = []
+        metric_dict["resid_sum_of_squares"] = []
     if compute_featurewise_density_statistics:
         feature_metric_dict["feature_density"] = []
         feature_metric_dict["consistent_activation_heuristic"] = []
@@ -583,6 +591,8 @@ def get_sparsity_and_variance_metrics(
             cossim = (x_normed * x_hat_normed).sum(dim=-1)
 
             metric_dict["explained_variance"].append(explained_variance)
+            metric_dict["total_sum_of_squares"].append(total_sum_of_squares)
+            metric_dict["resid_sum_of_squares"].append(resid_sum_of_squares)
             metric_dict["mse"].append(mse)
             metric_dict["cossim"].append(cossim)
 
