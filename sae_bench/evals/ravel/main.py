@@ -405,6 +405,7 @@ def run_eval_single_sae(
     random.seed(config.random_seed)
     torch.manual_seed(config.random_seed)
     os.makedirs(artifacts_folder, exist_ok=True)
+    torch.set_grad_enabled(True)
 
     results_dict = {}
 
