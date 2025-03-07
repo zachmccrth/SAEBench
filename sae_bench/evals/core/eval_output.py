@@ -69,14 +69,6 @@ class ReconstructionQualityMetrics(BaseMetrics):
         title="Cosine Similarity",
         description="Cosine similarity between original activation and SAE reconstruction",
     )
-    total_sum_of_squares: float = Field(
-        title="Total Sum of Squares",
-        description="Sum of squares of the original activation",
-    )
-    resid_sum_of_squares: float = Field(
-        title="Residual Sum of Squares",
-        description="Sum of squares of the residual between original activation and SAE reconstruction",
-    )
 
 
 # Define metrics for shrinkage

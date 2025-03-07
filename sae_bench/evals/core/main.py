@@ -238,12 +238,6 @@ def run_evals(
                     "explained_variance": sparsity_variance_metrics[
                         "explained_variance"
                     ],
-                    "total_sum_of_squares": sparsity_variance_metrics[
-                        "total_sum_of_squares"
-                    ],
-                    "resid_sum_of_squares": sparsity_variance_metrics[
-                        "resid_sum_of_squares"
-                    ],
                     "mse": sparsity_variance_metrics["mse"],
                     "cossim": sparsity_variance_metrics["cossim"],
                 }
@@ -467,10 +461,10 @@ def get_sparsity_and_variance_metrics(
         metric_dict["l1"] = []
     if compute_variance_metrics:
         metric_dict["explained_variance"] = []
+        resid_sum_of_squares_list = [] # for explained variance
+        flattened_sae_inputs_list = [] # for explained variance
         metric_dict["mse"] = []
         metric_dict["cossim"] = []
-        metric_dict["total_sum_of_squares"] = []
-        metric_dict["resid_sum_of_squares"] = []
     if compute_featurewise_density_statistics:
         feature_metric_dict["feature_density"] = []
         feature_metric_dict["consistent_activation_heuristic"] = []
@@ -575,12 +569,10 @@ def get_sparsity_and_variance_metrics(
             resid_sum_of_squares = (
                 (flattened_sae_input - flattened_sae_out).pow(2).sum(dim=-1)
             )
-            total_sum_of_squares = (
-                (flattened_sae_input - flattened_sae_input.mean(dim=0)).pow(2).sum(-1)
-            )
+            flattened_sae_inputs_list.append(flattened_sae_input)
+            resid_sum_of_squares_list.append(resid_sum_of_squares)
 
             mse = resid_sum_of_squares / flattened_mask.sum()
-            explained_variance = 1 - resid_sum_of_squares / total_sum_of_squares
 
             x_normed = flattened_sae_input / torch.norm(
                 flattened_sae_input, dim=-1, keepdim=True
@@ -590,9 +582,6 @@ def get_sparsity_and_variance_metrics(
             )
             cossim = (x_normed * x_hat_normed).sum(dim=-1)
 
-            metric_dict["explained_variance"].append(explained_variance)
-            metric_dict["total_sum_of_squares"].append(total_sum_of_squares)
-            metric_dict["resid_sum_of_squares"].append(resid_sum_of_squares)
             metric_dict["mse"].append(mse)
             metric_dict["cossim"].append(cossim)
 
@@ -607,7 +596,19 @@ def get_sparsity_and_variance_metrics(
     # Aggregate scalar metrics
     metrics: dict[str, float] = {}
     for metric_name, metric_values in metric_dict.items():
+        if metric_name == "explained_variance":
+            continue
         metrics[f"{metric_name}"] = torch.cat(metric_values).mean().item()
+
+    if "explained_variance" in metric_dict:
+        flattened_sae_inputs = torch.cat(flattened_sae_inputs_list) # [n_samples, d_model]
+        resid_sum_of_squares = torch.cat(resid_sum_of_squares_list) # [n_samples]
+        total_sum_of_squares = (
+            (flattened_sae_inputs - flattened_sae_inputs.mean(dim=0)).pow(2).sum(dim=-1)
+        )
+        total_variance = total_sum_of_squares.mean().item()
+        resid_variance = resid_sum_of_squares.mean().item()
+        metrics["explained_variance"] = (1 - resid_variance / total_variance)
 
     # Aggregate feature-wise metrics
     feature_metrics: dict[str, list[float]] = {}
