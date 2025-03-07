@@ -61,6 +61,11 @@ class ReconstructionQualityMetrics(BaseMetrics):
         description="Proportion of variance in the original activation explained by the SAE reconstruction",
         json_schema_extra=DEFAULT_DISPLAY,
     )
+    explained_variance_legacy: float = Field(
+        title="Explained Variance (Legacy)",
+        description="Previously used, incorrect, formula for explained variance",
+        json_schema_extra=DEFAULT_DISPLAY,
+    )
     mse: float = Field(
         title="Mean Squared Error",
         description="Mean squared error between original activation and SAE reconstruction",
