@@ -111,6 +111,32 @@ The total evaluation time for a single SAE across all benchmarks is approximatel
 | Unlearning      | 10                     | 33               |
 | **Total**       | **65**                 | **107**          |
 
+
+# SAE Bench Baseline Suite
+
+We provide a suite of baseline SAEs. We have the following 7 SAE varieties:
+
+- ReLU (Anthropic April Update)
+- TopK
+- BatchTopK
+- JumpReLU
+- Gated
+- P-anneal
+- Matryoshka BatchTopK
+
+Trained across 3 widths (4k, 16k, and 65k), 6 sparsities (~20 to ~640), on layer 8 of Pythia-160M and layer 12 of Gemma-2-2B. Additionally, we have checkpoints throughout training for TopK and RelU variants for Gemma-2-2B 16k and 65k widths. The SAEs are located in the following HuggingFace repos:
+
+- [Pythia-160M 4k width](https://huggingface.co/adamkarvonen/saebench_pythia-160m-deduped_width-2pow12_date-0108)
+- [Pythia-160M 16k width](https://huggingface.co/adamkarvonen/saebench_pythia-160m-deduped_width-2pow14_date-0108)
+- [Pythia-160M 65k width](https://huggingface.co/adamkarvonen/saebench_pythia-160m-deduped_width-2pow16_date-0108)
+- [Gemma-2-2B 4k width](https://huggingface.co/adamkarvonen/saebench_gemma-2-2b_width-2pow12_date-0108)
+- [Gemma-2-2B 16k width](https://huggingface.co/canrager/saebench_gemma-2-2b_width-2pow14_date-0107)
+- [Gemma-2-2B 65k width](https://huggingface.co/canrager/saebench_gemma-2-2b_width-2pow16_date-0107)
+
+All results from these SAEs, plus PCA / residual stream baselines, are contained [here](https://huggingface.co/datasets/adamkarvonen/sae_bench_results_0125).
+
+To evaluate these SAEs, refer to `custom_saes/run_all_evals_dictionary_learning.py`.
+
 ## Development
 
 This project uses [Poetry](https://python-poetry.org/) for dependency management and packaging.
