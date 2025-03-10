@@ -7,6 +7,7 @@ from tqdm import tqdm
 import sae_bench.evals.absorption.main as absorption
 import sae_bench.evals.autointerp.main as autointerp
 import sae_bench.evals.core.main as core
+import sae_bench.evals.ravel.main as ravel
 import sae_bench.evals.scr_and_tpp.main as scr_and_tpp
 import sae_bench.evals.sparse_probing.main as sparse_probing
 import sae_bench.evals.unlearning.main as unlearning
@@ -24,7 +25,7 @@ MODEL_CONFIGS = {
     "gemma-2-2b": {
         "batch_size": 32,
         "dtype": "bfloat16",
-        "layers": [5, 12, 19],
+        "layers": [12],
         "d_model": 2304,
     },
 }
@@ -37,6 +38,7 @@ output_folders = {
     "tpp": "eval_results/tpp",
     "sparse_probing": "eval_results/sparse_probing",
     "unlearning": "eval_results/unlearning",
+    "ravel": "eval_results/ravel",
 }
 
 
@@ -103,6 +105,20 @@ def run_evals(
                 verbose=True,
                 dtype=llm_dtype,
                 device=device,
+            )
+        ),
+        "ravel": (
+            lambda: ravel.run_eval(
+                ravel.RAVELEvalConfig(
+                    model_name=model_name,
+                    random_seed=RANDOM_SEED,
+                    llm_batch_size=llm_batch_size,
+                    llm_dtype=llm_dtype,
+                ),
+                selected_saes,
+                device,
+                "eval_results/ravel",
+                force_rerun,
             )
         ),
         "scr": (
@@ -199,6 +215,7 @@ def run_evals(
 
 if __name__ == "__main__":
     import sae_bench.custom_saes.identity_sae as identity_sae
+    import sae_bench.custom_saes.pca_sae as pca_sae
 
     device = general_utils.setup_environment()
 
@@ -217,6 +234,7 @@ if __name__ == "__main__":
         "absorption",
         "autointerp",
         "core",
+        "ravel",
         "scr",
         "tpp",
         "sparse_probing",
@@ -255,8 +273,14 @@ if __name__ == "__main__":
         selected_saes = [(f"{model_name}_layer_{hook_layer}_identity_sae", sae)]
 
         # This will evaluate PCA SAEs
-        # sae = pca_sae.PCASAE(model_name, d_model, hook_layer, context_size=128)
-        # filename = f"gemma-2-2b-pca-sae/pca_gemma-2-2b_blocks.{hook_layer}.hook_resid_post.pt"
+        # sae = pca_sae.PCASAE(
+        #     d_model,
+        #     model_name,
+        #     hook_layer,
+        #     device=torch.device(device),
+        #     dtype=general_utils.str_to_dtype(llm_dtype),
+        # )
+        # filename = f"pca_gemma-2-2b_blocks.{hook_layer}.hook_resid_post.pt"
         # sae.load_from_file(filename)
         # selected_saes = [(f"{model_name}_layer_{hook_layer}_pca_sae", sae)]
 

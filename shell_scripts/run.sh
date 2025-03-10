@@ -90,6 +90,19 @@ for sae_block_pattern in "${sae_block_patterns[@]}"; do
 done
 
 for sae_block_pattern in "${sae_block_patterns[@]}"; do
+    echo "Starting ravel for pattern ${sae_block_pattern}..."
+    python sae_bench/evals/ravel/main.py \
+    --sae_regex_pattern "${sae_regex_pattern}" \
+    --sae_block_pattern "${sae_block_pattern}" \
+    --model_name ${model_name} || {
+        echo "Ravel for pattern ${sae_block_pattern} failed, continuing to next pattern..."
+        continue
+    }
+    echo "Completed ravel for pattern ${sae_block_pattern}"
+done
+
+
+for sae_block_pattern in "${sae_block_patterns[@]}"; do
     echo "Starting unlearning for pattern ${sae_block_pattern}..."
     python sae_bench/evals/unlearning/main.py \
     --sae_regex_pattern "${sae_regex_pattern}" \

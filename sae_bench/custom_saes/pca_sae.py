@@ -8,6 +8,7 @@ import torch.nn as nn
 from sklearn.decomposition import IncrementalPCA
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
+from huggingface_hub import hf_hub_download
 
 import sae_bench.custom_saes.base_sae as base_sae
 import sae_bench.sae_bench_utils.activation_collection as activation_collection
@@ -28,7 +29,7 @@ class PCASAE(base_sae.BaseSAE):
         super().__init__(d_in, d_in, model_name, hook_layer, device, dtype, hook_name)
 
         # Additional parameter specific to PCA
-        self.mean = nn.Parameter(torch.zeros(d_in))
+        self.mean = nn.Parameter(torch.zeros(d_in, device=device, dtype=dtype))
 
     def encode(self, x: torch.Tensor):
         centered_acts = x - self.mean
@@ -57,7 +58,16 @@ class PCASAE(base_sae.BaseSAE):
 
     def load_from_file(self, file_path: str):
         """Load the encoder and decoder from a file."""
-        state_dict = torch.load(file_path, map_location=self.device)
+
+        path_to_params = hf_hub_download(
+            repo_id="canrager/lm_sae",
+            filename=file_path,
+            subfolder="gemma-2-2b_pca_saes",
+            force_download=False,
+            local_dir="downloaded_saes",
+        )
+
+        state_dict = torch.load(path_to_params, map_location=self.device)
         self.W_enc.data = state_dict["W_enc"]  # type: ignore
         self.W_dec.data = state_dict["W_dec"]
         self.mean.data = state_dict["mean"]
@@ -70,7 +80,9 @@ class PCASAE(base_sae.BaseSAE):
 
         print("Decoder vectors are not normalized. Normalizing.")
 
-        test_input = torch.randn(10, self.cfg.d_in)
+        test_input = torch.randn(
+            10, self.cfg.d_in, device=self.device, dtype=self.dtype
+        )
         initial_output = self(test_input)
 
         self.W_dec.data /= norms[:, None]
