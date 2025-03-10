@@ -7,7 +7,7 @@ from sae_bench.evals.ravel.eval_config import RAVELEvalConfig
 import sae_bench.sae_bench_utils.activation_collection as activation_collection
 
 
-class SupervisedBaseline(nn.Module):
+class MDAS(nn.Module):
     def __init__(
         self,
         model: AutoModelForCausalLM,

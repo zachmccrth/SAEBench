@@ -5,7 +5,7 @@ import sae_lens
 from transformers import AutoModelForCausalLM, BatchEncoding, AutoTokenizer
 
 from sae_bench.evals.ravel.eval_config import RAVELEvalConfig
-from sae_bench.evals.ravel.supervised_baseline import SupervisedBaseline
+from sae_bench.evals.ravel.mdas import MDAS
 import sae_bench.sae_bench_utils.activation_collection as activation_collection
 
 
@@ -271,7 +271,7 @@ def train_mdbm(
     )
 
     if train_mdas:
-        mdbm = SupervisedBaseline(
+        mdbm = MDAS(
             model,
             tokenizer,
             config,
