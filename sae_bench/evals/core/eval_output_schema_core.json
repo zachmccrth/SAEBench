@@ -326,6 +326,12 @@
           "type": "number",
           "ui_default_display": true
         },
+        "explained_variance_legacy": {
+          "description": "Previously used, incorrect, formula for explained variance",
+          "title": "Explained Variance (Legacy)",
+          "type": "number",
+          "ui_default_display": true
+        },
         "mse": {
           "description": "Mean squared error between original activation and SAE reconstruction",
           "title": "Mean Squared Error",
@@ -339,6 +345,7 @@
       },
       "required": [
         "explained_variance",
+        "explained_variance_legacy",
         "mse",
         "cossim"
       ],
