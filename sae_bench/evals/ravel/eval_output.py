@@ -9,7 +9,7 @@ from sae_bench.evals.base_eval_output import (
 )
 from sae_bench.evals.ravel.eval_config import RAVELEvalConfig
 
-EVAL_TYPE_ID_RAVEL = "RAVEL"
+EVAL_TYPE_ID_RAVEL = "ravel"
 
 
 @dataclass
