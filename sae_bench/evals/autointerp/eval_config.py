@@ -39,7 +39,7 @@ class AutoInterpEvalConfig:
         title="Model Name",
         description="Model name. Must be set with a command line argument.",
     )
-    n_latents: int = Field(
+    n_latents: int | None = Field(
         default=1000,
         title="Number of Latents",
         description="The number of latents for the LLM judge to interpret",
