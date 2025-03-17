@@ -18,6 +18,4 @@ The scoring consists of three steps:
 
 ## Debugging Notes
 
-- In one case, on a single 3090 GPU, I encountered this error: `RuntimeError: CUDA driver error: invalid argument`.
-
-I found that switching to torch 2.5.0 instead of 2.6.0 fixed the issue.
+- This eval suffers from memory fragmentation and intermittent OOMs when evaluating multiple SAEs. I fixed this on 3090s by decreasing the batch size from 32 -> 8. Moving to a larger GPU also works. It would be nice to improve this to enable larger batch sizes.

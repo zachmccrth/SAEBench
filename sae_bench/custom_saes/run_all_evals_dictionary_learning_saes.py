@@ -219,7 +219,7 @@ def run_evals(
                 ravel.RAVELEvalConfig(
                     model_name=model_name,
                     random_seed=random_seed,
-                    llm_batch_size=llm_batch_size,
+                    llm_batch_size=llm_batch_size // 4,
                     llm_dtype=llm_dtype,
                 ),
                 selected_saes,
@@ -372,6 +372,7 @@ if __name__ == "__main__":
         "sparse_probing",
         "autointerp",
         # "unlearning",
+        "ravel",
     ]
 
     if "autointerp" in eval_types:

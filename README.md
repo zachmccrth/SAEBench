@@ -9,7 +9,6 @@
 - [Training Your Own SAEs](#training-your-own-saes)
 - [Graphing Results](#graphing-results)
 
-CURRENT REPO STATUS: SAE Bench is currently a beta release. This repo is still under development as we clean up some of the rough edges left over from the research process. However, it is usable in the current state for both SAE Lens SAEs and custom SAEs.
 
 ## Overview
 
@@ -109,7 +108,8 @@ The total evaluation time for a single SAE across all benchmarks is approximatel
 | Sparse Probing  | 3                      | 15               |
 | Auto-Interp     | 9                      | 0                |
 | Unlearning      | 10                     | 33               |
-| **Total**       | **65**                 | **107**          |
+| RAVEL           | 45                     | 45               |
+| **Total**       | **110**                | **152**          |
 
 
 # SAE Bench Baseline Suite
