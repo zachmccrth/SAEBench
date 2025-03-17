@@ -103,7 +103,7 @@ class FeatureAbsorptionCalculator:
         # If the top firing feature isn't aligned with the probe, this isn't absorption
         if (
             top_projection_feature_scores[0].probe_cos_sim
-            < self.probe_cos_sim_threshold
+            < self.full_absorption_probe_cos_sim_threshold
         ):
             return False
         # If the probe isn't even activated, this can't be absorption
