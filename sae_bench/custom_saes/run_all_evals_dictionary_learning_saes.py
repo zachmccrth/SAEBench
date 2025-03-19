@@ -323,27 +323,32 @@ def run_evals(
 
         print(f"\n\n\nRunning {eval_type} evaluation\n\n\n")
 
-        for i, sae_location in enumerate(sae_locations):
-            is_final = False
-            if i == len(sae_locations) - 1:
-                is_final = True
+        try:
+            for i, sae_location in enumerate(sae_locations):
+                is_final = False
+                if i == len(sae_locations) - 1:
+                    is_final = True
 
-            sae = load_dictionary_learning_sae(
-                repo_id=repo_id,
-                location=sae_location,
-                layer=None,
-                model_name=model_name,
-                device=device,
-                dtype=general_utils.str_to_dtype(llm_dtype),
-            )
-            unique_sae_id = sae_location.replace("/", "_")
-            unique_sae_id = f"{repo_id.split('/')[1]}_{unique_sae_id}"
-            selected_saes = [(unique_sae_id, sae)]
+                sae = load_dictionary_learning_sae(
+                    repo_id=repo_id,
+                    location=sae_location,
+                    layer=None,
+                    model_name=model_name,
+                    device=device,
+                    dtype=general_utils.str_to_dtype(llm_dtype),
+                )
+                unique_sae_id = sae_location.replace("/", "_")
+                unique_sae_id = f"{repo_id.split('/')[1]}_{unique_sae_id}"
+                selected_saes = [(unique_sae_id, sae)]
 
-            os.makedirs(output_folders[eval_type], exist_ok=True)
-            eval_runners[eval_type](selected_saes, is_final)
+                os.makedirs(output_folders[eval_type], exist_ok=True)
+                eval_runners[eval_type](selected_saes, is_final)
 
-            del sae
+                del sae
+
+        except Exception as e:
+            print(f"Error running {eval_type} evaluation: {e}")
+            continue
 
 
 if __name__ == "__main__":
