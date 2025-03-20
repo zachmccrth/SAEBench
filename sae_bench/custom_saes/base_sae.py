@@ -54,12 +54,12 @@ class BaseSAE(nn.Module, ABC):
     @abstractmethod
     def decode(self, feature_acts: torch.Tensor):
         """Must be implemented by child classes"""
-        raise NotImplementedError("Encode method must be implemented by child classes")
+        raise NotImplementedError("Decode method must be implemented by child classes")
 
     @abstractmethod
     def forward(self, x: torch.Tensor):
         """Must be implemented by child classes"""
-        raise NotImplementedError("Encode method must be implemented by child classes")
+        raise NotImplementedError("Forward method must be implemented by child classes")
 
     def to(self, *args, **kwargs):
         """Handle device and dtype updates"""
