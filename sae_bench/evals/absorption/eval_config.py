@@ -66,3 +66,14 @@ class AbsorptionEvalConfig(BaseEvalConfig):
         title="K-Sparse Probe Number of Epochs",
         description="Number of epochs for k-sparse probes.",
     )
+    min_GT_probe_f1: float = Field(
+        default=0.6,
+        title="Minimum ground truth probe F1 score",
+        description="The minimum ground truth probe F1 score for the first-letter feature to be considered present",
+    )
+    min_feats_for_eval: int = Field(
+        default=20,
+        ge=1,
+        title="Minumum features for evaluation",
+        description="The minimum number of first-letter features (as detected by the GT probes) needed to evaluate absorption",
+    )

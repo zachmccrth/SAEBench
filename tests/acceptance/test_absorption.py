@@ -44,6 +44,7 @@ def test_end_to_end_different_seed():
         prompt_token_pos=-6,
         llm_batch_size=512,
         llm_dtype="float32",
+        min_GT_probe_f1=0.3,
     )
     selected_saes = get_saes_from_regex(TEST_RELEASE, TEST_SAE_NAME)
     print(f"Selected SAEs: {selected_saes}")

@@ -106,6 +106,11 @@ def run_eval(
             k_sparse_probing_path, orient="records", indent=4
         )
 
+        # check we have enough first-letter features to evaluate absorption
+        if (k_sparse_probing_results['f1_probe'] > config.min_GT_probe_f1).sum() < config.min_feats_for_eval:
+            print(f"\n\n\nCannot evaluate absorption due to insufficent first-letter features detected in model: {config.model_name}\n\n\n")
+            break
+
         raw_df = run_feature_absortion_experiment(
             model=model,
             sae=sae,
@@ -128,19 +133,20 @@ def run_eval(
         eval_result_details = []
         for _, row in agg_df.iterrows():
             letter = row["letter"]
-            mean_absorption_fractions.append(row["mean_absorption_fraction"])
-            full_absorption_rates.append(row["full_absorption_rate"])
-            num_split_features.append(row["num_split_feats"])
-            eval_result_details.append(
-                AbsorptionResultDetail(
-                    first_letter=letter,  # type: ignore
-                    mean_absorption_fraction=row["mean_absorption_fraction"],  # type: ignore
-                    full_absorption_rate=row["full_absorption_rate"],  # type: ignore
-                    num_full_absorption=row["num_full_absorption"],  # type: ignore
-                    num_probe_true_positives=row["num_probe_true_positives"],  # type: ignore
-                    num_split_features=row["num_split_feats"],  # type: ignore
+            if k_sparse_probing_results[k_sparse_probing_results['letter'] == row['letter']]['f1_probe'].item() > config.min_GT_probe_f1:
+                mean_absorption_fractions.append(row["mean_absorption_fraction"])
+                full_absorption_rates.append(row["full_absorption_rate"])
+                num_split_features.append(row["num_split_feats"])
+                eval_result_details.append(
+                    AbsorptionResultDetail(
+                        first_letter=letter,  # type: ignore
+                        mean_absorption_fraction=row["mean_absorption_fraction"],  # type: ignore
+                        full_absorption_rate=row["full_absorption_rate"],  # type: ignore
+                        num_full_absorption=row["num_full_absorption"],  # type: ignore
+                        num_probe_true_positives=row["num_probe_true_positives"],  # type: ignore
+                        num_split_features=row["num_split_feats"],  # type: ignore
+                    )
                 )
-            )
 
         eval_output = AbsorptionEvalOutput(
             eval_type_id=EVAL_TYPE_ID_ABSORPTION,
