@@ -44,7 +44,13 @@ from sae_bench.sae_bench_utils.sae_selection_utils import (
 import sae_bench.sae_bench_utils.activation_collection as activation_collection
 import sae_bench.evals.ravel.intervention as intervention
 
-LLM_NAME_MAP = {"gemma-2-2b": "google/gemma-2-2b"}
+# For our initial experiments, we only used transformer_lens and the shorter LLM names
+# For RAVEL, we use HF transformers, which requires the full model name
+# So, it's the shorter name: full name map
+LLM_NAME_MAP = {
+    "gemma-2-2b": "google/gemma-2-2b",
+    "pythia-160m-deduped": "EleutherAI/pythia-160m-deduped",
+}
 
 
 def create_dataloaders(

@@ -22,7 +22,7 @@ def custom_left_padding(
     if pad_to_length is not None:
         max_length = pad_to_length
 
-    if hasattr(tokenizer, "pad_token_id"):
+    if hasattr(tokenizer, "pad_token_id") and tokenizer.pad_token_id is not None:
         pad_token_id = tokenizer.pad_token_id
     else:
         pad_token_id = tokenizer.eos_token_id

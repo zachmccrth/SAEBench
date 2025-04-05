@@ -31,11 +31,14 @@ LLM_NAME_TO_DTYPE = {
 
 
 def get_module(model: AutoModelForCausalLM, layer_num: int) -> torch.nn.Module:
+    """If missing, refer to sae_bench/sae_bench_utils/misc_notebooks/test_submodule.ipynb for an example of how to get the module for a given model."""
     if model.config.architectures[0] == "Gemma2ForCausalLM":
         return model.model.layers[layer_num]
+    elif model.config.architectures[0] == "GPTNeoXForCausalLM":
+        return model.gpt_neox.layers[layer_num]
     else:
         raise ValueError(
-            f"Model {model.config.architectures[0]} not supported, please add the appropriate module"
+            f"Model {model.config.architectures[0]} not supported, please add the appropriate module. See docstring for get_module()"
         )
 
 
