@@ -153,7 +153,7 @@ def load_dictionary_learning_topk_sae(
         use_threshold=use_threshold_at_inference,
     )
 
-    sae.load_state_dict(renamed_params)
+    sae.load_state_dict(renamed_params)  # type: ignore
 
     sae.to(device=device, dtype=dtype)
 

@@ -147,7 +147,7 @@ def load_dictionary_learning_relu_sae(
         dtype=dtype,
     )
 
-    sae.load_state_dict(renamed_params)
+    sae.load_state_dict(renamed_params)  # type: ignore
 
     sae.to(device=device, dtype=dtype)
 
