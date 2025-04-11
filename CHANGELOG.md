@@ -2,6 +2,133 @@
 
 
 
+## v0.4.1 (2025-04-11)
+
+### Chore
+
+* chore: fixing linting and formatting ([`a839843`](https://github.com/adamkarvonen/SAEBench/commit/a83984373f1e557e0d2b2040378b63a6c107208c))
+
+### Fix
+
+* fix: fix tokenization with mistral for absorption benchmark ([`ce3bccc`](https://github.com/adamkarvonen/SAEBench/commit/ce3bccc39316ad2f4d431a38785d5e128df94a9b))
+
+### Unknown
+
+* Merge pull request #72 from chanind/fix-ci
+
+chore: fixing linting and formatting ([`e751b2f`](https://github.com/adamkarvonen/SAEBench/commit/e751b2f9d8c38f355b7a7a693c750652c429a42b))
+
+* Merge pull request #70 from chanind/fix-mistral-tokenization
+
+Fix mistral tokenization ([`5181bcc`](https://github.com/adamkarvonen/SAEBench/commit/5181bcc6c0568c41564227c43521cf323f894260))
+
+* prepend newline to all examples for mistral ([`f7b1ad0`](https://github.com/adamkarvonen/SAEBench/commit/f7b1ad043a5bad7d40b94e55b9f68d50781f4084))
+
+* Add documentation ([`0fbbe25`](https://github.com/adamkarvonen/SAEBench/commit/0fbbe2564ef8612f895c7acda82105123a0f3a52))
+
+* Merge pull request #67 from demiantill/absorption-valid-feature-threshold
+
+GT probe f1 score threshold to check valid features for absorption calculation ([`de26d33`](https://github.com/adamkarvonen/SAEBench/commit/de26d33d600fa60117f503332e8eab85132ead5a))
+
+* added GT probe f1 score threshold to be considered a valid feature for use in absorption evaluation ([`996daa0`](https://github.com/adamkarvonen/SAEBench/commit/996daa0deaf57faa8f57662714d9247264a16ca5))
+
+* Merge pull request #62 from demiantill/absorption-fraction-thresholds
+
+Support for using thresholds with the absorption fraction metric ([`2c574e5`](https://github.com/adamkarvonen/SAEBench/commit/2c574e54ef3885635db667f7f85066c98a4dd047))
+
+* Merge pull request #66 from tatsuropfgt/fix/typos
+
+Fix error messages ([`c5c90a1`](https://github.com/adamkarvonen/SAEBench/commit/c5c90a136c8db8e704e401328a49b19932ad56c9))
+
+* Fix error messages ([`eb0e21e`](https://github.com/adamkarvonen/SAEBench/commit/eb0e21e6483af451275d6a407ff7013ae5790c41))
+
+* Proceed to next evaluation if exception encountered ([`c320790`](https://github.com/adamkarvonen/SAEBench/commit/c320790319a3ae278f86ee666341fad18abbc6a1))
+
+* updated variable name ([`8271ab0`](https://github.com/adamkarvonen/SAEBench/commit/8271ab08d8850aeb99ae8d0e1dbdb9215485a813))
+
+* added support for using thresholds with the absorption fraction metric ([`ca9d806`](https://github.com/adamkarvonen/SAEBench/commit/ca9d806aac04e7e54f44cef92401eb4771e0581a))
+
+* Various improvements to reduce RAVEL memory fragmentation ([`07c9238`](https://github.com/adamkarvonen/SAEBench/commit/07c9238f7343cbafaf2de442c15de6506e018941))
+
+* Merge pull request #65 from alowet/main
+
+Fix autointerp demo.py ([`db5a2d6`](https://github.com/adamkarvonen/SAEBench/commit/db5a2d6573c5f5adeeb128f8e7fb0f876dc584ca))
+
+* Allow n_latents to be None so that override_latents works. Pass additional arguments to run_eval in demo.py so that it works. ([`421ac62`](https://github.com/adamkarvonen/SAEBench/commit/421ac62d8c435e5e4b72597adb1e5b10b77360ad))
+
+* Merge pull request #64 from adamkarvonen/ravel_types
+
+Support RAVEL JSON Schema / types ([`02585e0`](https://github.com/adamkarvonen/SAEBench/commit/02585e0f9af3746b92e05e028f12b62ab05f66a9))
+
+* Support RAVEL JSON Schema / types ([`c8eab86`](https://github.com/adamkarvonen/SAEBench/commit/c8eab86089ff2aaeab0453b6734df6115a767130))
+
+* Merge pull request #63 from adamkarvonen/ravel_pytorch
+
+Implement RAVEL ([`ccd7bfb`](https://github.com/adamkarvonen/SAEBench/commit/ccd7bfb7ec396a8b5d752132e9d6aa833c3075f1))
+
+* Move baseline suite to main README ([`e69de67`](https://github.com/adamkarvonen/SAEBench/commit/e69de6762a18fb4a4fd7eb860bc903e0097d923f))
+
+* Rename supervised baseline to mdas ([`228ca11`](https://github.com/adamkarvonen/SAEBench/commit/228ca11e3cc586767dfd659e066f4f2432921b2d))
+
+* Remove old das ([`6574cbe`](https://github.com/adamkarvonen/SAEBench/commit/6574cbede2ffe4502d9f3b0dcbb9eb8bbb11f005))
+
+* Add end to end test for RAVEL ([`fc4ebf1`](https://github.com/adamkarvonen/SAEBench/commit/fc4ebf1734fb665f1774333eda283a4484f004da))
+
+* Merge pull request #61 from Stefan-Heimersheim/fix/correct_explained_variance
+
+Fix explained variance calculation ([`52fe993`](https://github.com/adamkarvonen/SAEBench/commit/52fe993418100c457ae4fba2d92dfa79bc64eb64))
+
+* Batched version of the variance computation ([`3b58c67`](https://github.com/adamkarvonen/SAEBench/commit/3b58c672e74678642859d9cc1baff004b4fce1d4))
+
+* Use conventional explained variance definition ([`7fb3ed3`](https://github.com/adamkarvonen/SAEBench/commit/7fb3ed3556e77d56bc81d0e314c769f1b75bc9f7))
+
+* Comparing explained variance definitions ([`baadb26`](https://github.com/adamkarvonen/SAEBench/commit/baadb26618c8beb50770aa47695159c7784fc5b0))
+
+* Various Ravel improvements ([`2875b66`](https://github.com/adamkarvonen/SAEBench/commit/2875b668fbe1f23ca83977e7461798fc7395e6b8))
+
+* Add debugging note ([`5160b81`](https://github.com/adamkarvonen/SAEBench/commit/5160b814922b95d7a80f26daa0c0302e56d039d8))
+
+* standardize batch sizes ([`6db967f`](https://github.com/adamkarvonen/SAEBench/commit/6db967fe62f26e5236517ddbc88f0627b52521dd))
+
+* Fix PCA implementation ([`246f57a`](https://github.com/adamkarvonen/SAEBench/commit/246f57a42b111a1dff6811c5b07be61cceba1fbf))
+
+* Add optional flag for adding SAE error term ([`b39411f`](https://github.com/adamkarvonen/SAEBench/commit/b39411f7bf11eb8023ec96304e281bf2b88afabd))
+
+* More memory usage reduction ([`6207cd4`](https://github.com/adamkarvonen/SAEBench/commit/6207cd45183bae8c9a685c6ee67950bfa912f40b))
+
+* Make sure to use torch.no_grad when appropriate ([`c681fd8`](https://github.com/adamkarvonen/SAEBench/commit/c681fd875b7a7f8c08b5f9f53bbae69db2dd5661))
+
+* Add option to train MDAS, enable RAVEL with custom SAEs ([`e030f12`](https://github.com/adamkarvonen/SAEBench/commit/e030f126a5a70642f9ac55129833783d15a4c331))
+
+* Implement ravel with generations ([`e2f7bc5`](https://github.com/adamkarvonen/SAEBench/commit/e2f7bc5fcac6838a21aabadc81be35516bc78a34))
+
+* Start running with new RAVEL dataset ([`12e658f`](https://github.com/adamkarvonen/SAEBench/commit/12e658fa5cf442922a14e6d255b219c1526ae21a))
+
+* RAVEL dataset refactor ([`1e21377`](https://github.com/adamkarvonen/SAEBench/commit/1e21377a9de22bf20be5fd1ea7ad05b29e25f1b8))
+
+* ravel DAS implementation ([`c66a604`](https://github.com/adamkarvonen/SAEBench/commit/c66a6042827bb63618e4c51e1d257ae5c4803326))
+
+* Remove recursive prompt selection due to random stack overflow issues ([`1481e30`](https://github.com/adamkarvonen/SAEBench/commit/1481e30f51f28d182a217832868f99749a87f5af))
+
+* Enable running eval on SAE Lens SAEs ([`b83309d`](https://github.com/adamkarvonen/SAEBench/commit/b83309d64604f9f03cba1afdbaa848b6aade97ea))
+
+* Initial run of RAVEL in SAE Bench ([`ceb23c6`](https://github.com/adamkarvonen/SAEBench/commit/ceb23c69e8e679cd256aca1a5c767d243d47de7f))
+
+* Clean up ([`70d567e`](https://github.com/adamkarvonen/SAEBench/commit/70d567e4d0c86e4365dc22461ac3ceeb54e865bf))
+
+* Compute cause / iso scores for validation data, test a supervised baseline ([`4b5b734`](https://github.com/adamkarvonen/SAEBench/commit/4b5b734919f3c4f0a482ab6d35cbb0cb63c05238))
+
+* Add isolation prompts ([`b7cbb56`](https://github.com/adamkarvonen/SAEBench/commit/b7cbb56e7b948daa5773307cf070960eb36f4558))
+
+* DBM working with debug information ([`0f4815b`](https://github.com/adamkarvonen/SAEBench/commit/0f4815b24b24ef01bb4ec97301e5d14e03bb0935))
+
+* Tested working DBM intervention ([`bbc1d0c`](https://github.com/adamkarvonen/SAEBench/commit/bbc1d0cc563ec7861b6146e6a342e39f50b5684c))
+
+* Initial stab at MDBM ([`5516969`](https://github.com/adamkarvonen/SAEBench/commit/55169693e5ab58a80f743bfdd93707b425fbaf5c))
+
+* Temp nnsight commit ([`10b86a7`](https://github.com/adamkarvonen/SAEBench/commit/10b86a73c801f318877c92d387669200c8b6c96a))
+
+
 ## v0.4.0 (2025-02-22)
 
 ### Chore
