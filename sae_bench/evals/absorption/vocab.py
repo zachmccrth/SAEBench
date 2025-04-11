@@ -1,6 +1,6 @@
 from typing import Callable
 
-from transformers import PreTrainedTokenizerFast
+from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
 
 LETTERS = "abcdefghijklmnopqrstuvwxyz"
 LETTERS_UPPER = LETTERS.upper()

@@ -67,6 +67,7 @@ pre-commit = "^4.1.0"
 
 [tool.pyright]
 typeCheckingMode = "standard"
+reportPrivateImportUsage = "none"
 
 [tool.ruff]
 exclude = ["dist", "docs", "*.ipynb"]
