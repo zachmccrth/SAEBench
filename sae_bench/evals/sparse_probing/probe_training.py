@@ -77,8 +77,8 @@ def prepare_probe_data(
     combined_acts = torch.cat([positive_acts_BD, selected_negative_acts_BD])
 
     combined_labels = torch.empty(len(combined_acts), dtype=torch.int, device=device)
-    combined_labels[:num_positive] = dataset_info.POSITIVE_CLASS_LABEL
-    combined_labels[num_positive:] = dataset_info.NEGATIVE_CLASS_LABEL
+    combined_labels.narrow(0, 0, num_positive).fill_(dataset_info.POSITIVE_CLASS_LABEL)
+    combined_labels.narrow(0, num_positive, len(combined_acts) - num_positive).fill_(dataset_info.NEGATIVE_CLASS_LABEL)
 
     # Shuffle the combined data
     shuffle_indices = torch.randperm(len(combined_acts))
@@ -280,7 +280,7 @@ def train_probe_gpu(
             optimizer.step()
 
         train_accuracy = test_probe_gpu(train_inputs, train_labels, batch_size, probe)
-        test_accuracy = test_probe_gpu(test_inputs, test_labels, batch_size, probe)
+        test_accuracy = test_probe_gpu(test_inputs.to(device), test_labels.to(device), batch_size, probe)
 
         if test_accuracy > best_test_accuracy:
             best_test_accuracy = test_accuracy

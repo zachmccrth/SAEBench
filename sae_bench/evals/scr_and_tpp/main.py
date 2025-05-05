@@ -14,6 +14,8 @@ from sae_lens import SAE
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 
+from sae_bench.evals import memory_utils as memory_utils
+
 import sae_bench.evals.scr_and_tpp.dataset_creation as dataset_creation
 import sae_bench.evals.sparse_probing.probe_training as probe_training
 import sae_bench.sae_bench_utils.activation_collection as activation_collection
@@ -61,42 +63,65 @@ def get_effects_per_class_precomputed_acts(
 
     assert inputs_train_BLD.shape[0] == len(labels_train_B)
 
-    device = inputs_train_BLD.device
-    dtype = inputs_train_BLD.dtype
+    """
+    System here is basically:
+    
+    primary_device -> Device needed for high performance computation. (CUDA if available, CPU otherwise)
+    
+    secondary_device -> If VRAM is available, GPU, otherwise CPU.
+    
+    """
+
+    primary_device = sae.device
+    dtype = sae.dtype
+
+    #TODO hardcoded for now,
+    secondary_device = "cpu"
+
+    # Preallocate data to the primary device for faster training, they should run out of scope and be removed automatically
+    # If too large, may need to be moved by batches (inside for loop)
+    inputs_train_BLD = inputs_train_BLD.to(primary_device, dtype)
+    labels_train_B = labels_train_B.to(primary_device, dtype)
 
     running_sum_pos_F = torch.zeros(
-        sae.W_dec.data.shape[0], dtype=torch.float32, device=device
+        sae.W_dec.data.shape[0], dtype=torch.float32, device=primary_device
     )
     running_sum_neg_F = torch.zeros(
-        sae.W_dec.data.shape[0], dtype=torch.float32, device=device
+        sae.W_dec.data.shape[0], dtype=torch.float32, device=primary_device
     )
     count_pos = 0
     count_neg = 0
 
     for i in range(0, inputs_train_BLD.shape[0], sae_batch_size):
+        # This should remain a view of the original inputs_train_BLD
         activation_batch_BLD = inputs_train_BLD[i : i + sae_batch_size]
         labels_batch_B = labels_train_B[i : i + sae_batch_size]
 
-        activations_BL = einops.reduce(activation_batch_BLD, "B L D -> B L", "sum")
-        nonzero_acts_BL = (activations_BL != 0.0).to(dtype=dtype)
+        # Sum over embedding dimension to ensure that at least some neurons are firing (removes empty tokens)
+        nonzero_acts_BL = (einops.reduce(activation_batch_BLD, "B L D -> B L", "sum") != 0.0).to(dtype=dtype)
         nonzero_acts_B = einops.reduce(nonzero_acts_BL, "B L -> B", "sum").to(
             torch.float32
         )
 
+        # This intensive calculation should occur on the primary device
         f_BLF = sae.encode(activation_batch_BLD)
-        f_BLF = f_BLF * nonzero_acts_BL[:, :, None]  # zero out masked tokens
-
-        # Get the average activation per input. We divide by the number of nonzero activations for the attention mask
         average_sae_acts_BF = (
-            einops.reduce(f_BLF, "B L F -> B F", "sum").to(torch.float32)
-            / nonzero_acts_B[:, None]
+                einops.reduce(
+                    f_BLF * nonzero_acts_BL[:, :, None],
+                    "B L F -> B F",
+                    "sum"
+                ).to(torch.float32) / nonzero_acts_B[:, None]
         )
+        # # Remove asap as the scope continues for a while
+        # del f_BLF
+        # torch.cuda.empty_cache()
 
         # Separate positive and negative samples
         pos_mask = labels_batch_B == dataset_info.POSITIVE_CLASS_LABEL
         neg_mask = labels_batch_B == dataset_info.NEGATIVE_CLASS_LABEL
 
         # Accumulate sums in fp32
+        #TODO Check to see if necessary to move to cpu
         running_sum_pos_F += einops.reduce(
             average_sae_acts_BF[pos_mask], "B F -> F", "sum"
         )
@@ -118,8 +143,9 @@ def get_effects_per_class_precomputed_acts(
     # The decoder matrix can be very large, so we move it to the same device as the activations
     average_acts_F = (average_pos_sae_acts_F - average_neg_sae_acts_F).to(dtype)
 
-    probe_weight_D = probe.net.weight.to(dtype=dtype, device=device)
-    decoder_weight_DF = sae.W_dec.data.T.to(dtype=dtype, device=device)
+    #TODO examine size of decoder weight (should be fine?)
+    probe_weight_D = probe.net.weight.to(dtype=dtype, device=primary_device)
+    decoder_weight_DF = sae.W_dec.data.T.to(dtype=dtype, device=primary_device)
 
     dot_prod_F = (probe_weight_D @ decoder_weight_DF).squeeze()
 
@@ -246,7 +272,9 @@ def get_probe_test_accuracy(
         test_acts, test_labels = probe_training.prepare_probe_data(
             all_activations, class_name, perform_scr=perform_scr
         )
-
+        probe: probe_training.Probe = probes[class_name]
+        test_acts = test_acts.to(device=probe.net.weight.device)
+        test_labels = test_labels.to(device=probe.net.weight.device)
         test_acc_probe = probe_training.test_probe_gpu(
             test_acts,
             test_labels,
@@ -281,7 +309,9 @@ def get_scr_probe_test_accuracy(
         test_acts, test_labels = probe_training.prepare_probe_data(
             all_activations, class_name, perform_scr=True
         )
-
+        probe: probe_training.Probe = probes[class_name]
+        test_acts = test_acts.to(device=probe.net.weight.device)
+        test_labels = test_labels.to(device=probe.net.weight.device)
         for spurious_class_name in spurious_class_names:
             test_acc_probe = probe_training.test_probe_gpu(
                 test_acts,
@@ -587,6 +617,29 @@ def run_eval_single_dataset(
         if config.lower_vram_usage:
             model = model.to("cpu")  # type: ignore
 
+            memory_utils.move_dict_of_tensors_to_device(all_train_acts_BLD, "cpu")
+            # memory_utils.move_dict_of_tensors_to_device(all_test_acts_BLD, "cpu")
+
+            train_acts_size_bytes = 0
+            for key in all_train_acts_BLD:
+                train_acts_size_bytes += all_train_acts_BLD[key].nbytes
+
+            train_acts_size_mb = train_acts_size_bytes / 1024 ** 2
+            train_acts_size_gb = train_acts_size_bytes / 1024 ** 3
+
+            # test_acts_size_bytes = 0
+            # for key in all_test_acts_BLD:
+            #     test_acts_size_bytes += all_test_acts_BLD[key].nbytes
+
+            # test_acts_size_mb = test_acts_size_bytes / 1024 ** 2
+            # test_acts_size_gb = test_acts_size_bytes / 1024 ** 3
+
+            print(f"Storing training activations on cpu. Saved {train_acts_size_gb} GB from VRAM")
+            # print(f"Storing test activations on cpu. Saved {test_acts_size_gb} GB from VRAM")
+
+
+
+
         all_meaned_train_acts_BD = (
             activation_collection.create_meaned_model_activations(all_train_acts_BLD)
         )
@@ -595,6 +648,8 @@ def run_eval_single_dataset(
         )
 
         torch.set_grad_enabled(True)
+
+        #NOTE: This seems fast enough for now on the cpu (actually maybe it runs on the gpu?)
 
         llm_probes, llm_test_accuracies = probe_training.train_probe_on_activations(
             all_meaned_train_acts_BD,
@@ -611,6 +666,8 @@ def run_eval_single_dataset(
 
         torch.set_grad_enabled(False)
 
+
+        #NOTE: This seems fast enough for now on the cpu
         llm_test_accuracies = get_probe_test_accuracy(
             llm_probes,  # type: ignore
             chosen_classes,
@@ -638,7 +695,7 @@ def run_eval_single_dataset(
             model = model.to("cpu")  # type: ignore
         print(f"Loading activations from {activations_path}")
         acts = torch.load(activations_path)
-        all_train_acts_BLD = acts["train"]
+        all_train_acts_BLD= acts["train"]
         all_test_acts_BLD = acts["test"]
 
         print(f"Loading probes from {probes_path}")
@@ -650,6 +707,7 @@ def run_eval_single_dataset(
 
     torch.set_grad_enabled(False)
 
+    # Consider when memory should be handled?
     sae_node_effects = get_all_node_effects_for_one_sae(
         sae,
         llm_probes,  # type: ignore
