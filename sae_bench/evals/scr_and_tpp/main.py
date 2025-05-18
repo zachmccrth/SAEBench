@@ -105,6 +105,7 @@ def get_effects_per_class_precomputed_acts(
 
         # This intensive calculation should occur on the primary device
         f_BLF = sae.encode(activation_batch_BLD)
+        # This calculates the average activation of each feature that activates on our batched samples (within each batch)
         average_sae_acts_BF = (
                 einops.reduce(
                     f_BLF * nonzero_acts_BL[:, :, None],
@@ -122,6 +123,8 @@ def get_effects_per_class_precomputed_acts(
 
         # Accumulate sums in fp32
         #TODO Check to see if necessary to move to cpu
+
+        # calulates average activation of each feature over all batches
         running_sum_pos_F += einops.reduce(
             average_sae_acts_BF[pos_mask], "B F -> F", "sum"
         )
@@ -147,7 +150,7 @@ def get_effects_per_class_precomputed_acts(
     probe_weight_D = probe.net.weight.to(dtype=dtype, device=primary_device)
     decoder_weight_DF = sae.W_dec.data.T.to(dtype=dtype, device=primary_device)
 
-    dot_prod_F = (probe_weight_D @ decoder_weight_DF).squeeze()
+    dot_prod_F = (probe_weight_D @ decoder_weight_DF).squeeze() / probe_weight_D.norm()
 
     if not perform_scr:
         # Only consider activations from the positive class
